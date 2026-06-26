@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: visa-quiz-rag
+    runtime: python
+    region: singapore
+    # 常時起動（スピンダウンなし）のため有料プランを指定。
+    # 注意: ダッシュボードでプラン変更しても、Blueprint同期でこの記載値に引き戻される。
+    #       プラン変更は必ずこのファイルを修正してプッシュすること（真実源はyaml）。
+    plan: standard
+    branch: main
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.5
+      # 管理画面トークン。フロントの admin-<token>.html と一致させる必要があるため、
+      # 自動生成にせずダッシュボードで管理する（現状 admin-Kp7vQm2xRt.html に対応）。
+      - key: ADMIN_TOKEN
+        sync: false
+      # RAG出題に必須。未設定だと出題開始時に503を返す。
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # 任意。既定は claude-haiku-4-5-20251001。
+      - key: RAG_MODEL
+        value: claude-haiku-4-5-20251001
+      # 選択肢数（3 or 4）。フロントは可変対応済み。
+      - key: RAG_CHOICES
+        value: "3"
+      # RAGセッション（生成問題の一時保持）TTL秒。既定2時間。
+      - key: RAG_SESSION_TTL_SEC
+        value: "7200"
+      # データ永続化: 独立サービスの Render Postgres（下記 databases: 定義）へ接続する。
+      # DATABASE_URL が設定されていれば PostgreSQL、未設定なら従来どおり SQLite
+      # （ローカル開発・スモークテスト用）で動作する。
+      # Webサービスの再デプロイ・再起動でデータは消えない（DBが別サービスのため）。
+      - key: DATABASE_URL
+        fromDatabase:
+          name: visa-quiz-db
+          property: connectionString
+      #
+      # ※原本PDF（backend/source/visa_guide_v22_1.pdf）はリポジトリに含めない。
+      #   RAGをPDF根拠で動かす場合は、デプロイ後に手動配置する。
+      #   未配置でも観点要約（summary）を根拠に動作する。
+
+# データベース（Webサービスとは独立したサービスとして稼働。
+# Web側の再デプロイの影響を受けず、自動バックアップ付き）。
+# 注意: plan: free は作成から30日で期限切れになる試用品のため、本採用では有料プランにする。
+databases:
+  - name: visa-quiz-db
+    databaseName: visaquiz
+    user: visaquiz
+    region: singapore
+    plan: basic-256mb

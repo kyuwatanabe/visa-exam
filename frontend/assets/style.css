@@ -1,0 +1,1254 @@
+/* ===========================
+   ビザ検定 - 共通スタイル
+   =========================== */
+
+:root {
+  --bg:         #fdfcf9;
+  --surface:   #ffffff;
+  --primary:   #1e3a5f;
+  --primary-hover: #2c5282;
+  --text:      #1a1a1a;
+  --muted:     #6b6b6b;
+  --border:    #d8d6d0;
+  --success:   #2d6a4f;
+  --success-bg:#e8f5e9;
+  --danger:    #9d1c1c;
+  --danger-bg: #fdecea;
+  --accent:    #c89b3c;
+  --radius:    8px;
+  --shadow:    0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,.08);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--primary); }
+
+/* レイアウト */
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.app-shell--wide {
+  max-width: 1100px;
+}
+
+/* 受験画面用: 本文幅をウィンドウサイズに応じて可変にする（幅まわりのみの調整）。
+   両サイドの余白を詰め、回答後の「次へ」ボタンをスクロールなしで見える範囲に収めるのが狙い。
+   読みやすさのため上限は 1100px でキャップする。 */
+.app-shell--quiz {
+  max-width: min(1100px, 94vw);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: var(--primary);
+}
+
+.header .subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ヘッダー左側：題字＋副題のまとまり */
+.header-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+}
+
+/* ヘッダー右側：共通ナビ（ホーム / マイページ / ログアウト） */
+.header-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.header-nav .btn { padding: 6px 12px; font-size: 13px; }
+.header-nav .btn.is-active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* カード */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.card p {
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.card .muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* フォーム */
+label {
+  display: block;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  transition: border-color .15s ease;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30,58,95,.08);
+}
+
+/* ボタン */
+.btn {
+  display: inline-block;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color .15s ease, transform .05s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  background: #bcbcbc;
+  border-color: #bcbcbc;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+/* 難易度カード */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.level-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  background: #fff;
+  transition: all .15s ease;
+}
+
+.level-card:hover:not(.disabled) {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.level-card.selected {
+  border-color: var(--primary);
+  background: #eef3f9;
+}
+
+.level-card.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f5f4f0;
+}
+
+.level-card h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--primary);
+}
+
+.level-card .meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.level-card .coming-soon {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+
+/* 進捗バー */
+.progress {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.progress > .bar {
+  height: 100%;
+  background: var(--primary);
+  transition: width .3s ease;
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.progress-meta .step {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.progress-meta .category {
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+/* 問題と選択肢 */
+.question-text {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 0 0 20px;
+  line-height: 1.7;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.choice:hover {
+  border-color: var(--primary);
+  background: #f7f9fc;
+}
+
+.choice.selected {
+  border-color: var(--primary);
+  background: #eef3f9;
+  box-shadow: 0 0 0 2px rgba(30,58,95,.12);
+}
+
+.choice .marker {
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.choice.selected .marker {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.choice .text {
+  flex: 1;
+  font-size: 15px;
+}
+
+/* 結果画面 */
+.score-banner {
+  text-align: center;
+  padding: 36px 24px;
+  background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+}
+
+.score-banner .big {
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+  margin: 8px 0;
+}
+
+.score-banner .label {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+.score-banner .pct {
+  font-size: 18px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.review-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+  background: #fff;
+}
+
+.review-item.correct {
+  border-left: 4px solid var(--success);
+}
+
+.review-item.wrong {
+  border-left: 4px solid var(--danger);
+}
+
+.review-item .badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.review-item.correct .badge {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.review-item.wrong .badge {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.review-item .q {
+  font-weight: 500;
+  margin: 0 0 12px;
+}
+
+.review-item .choice-line {
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin: 4px 0;
+  background: #f7f7f4;
+}
+
+.review-item .choice-line.user-correct { background: var(--success-bg); }
+.review-item .choice-line.user-wrong   { background: var(--danger-bg); }
+.review-item .choice-line.correct-marker {
+  background: var(--success-bg);
+  font-weight: 500;
+}
+
+.review-item .explanation {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fafaf5;
+  border-left: 3px solid var(--accent);
+  font-size: 14px;
+  color: #333;
+}
+
+/* 履歴テーブル */
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+table.data th,
+table.data td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+table.data th {
+  background: #f3f4ef;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* 行hoverの色変化。履歴行（.hist-row）は正答率の色バンドが本体のため対象外
+   （hoverで色が変わると正答率の色と紛らわしい、というクライアント要望）。 */
+table.data tr:not(.hist-row):hover td {
+  background: #fafaf5;
+}
+
+.score-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.score-pill.high { background: var(--success-bg); color: var(--success); }
+.score-pill.mid  { background: #fff4e0; color: #8a6d2f; }
+.score-pill.low  { background: var(--danger-bg); color: var(--danger); }
+
+/* メッセージ */
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 20px;
+  font-size: 14px;
+}
+
+.loading {
+  text-align: center;
+  color: var(--muted);
+  padding: 60px 20px;
+  font-size: 14px;
+}
+
+/* 注記 */
+.note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* 管理者画面の追加スタイル */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+
+.stat .num {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+.stat .lbl {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+/* 問題管理セクション */
+.qm-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.qm-section:first-of-type {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.qm-h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.qm-pool {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.upload-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+input[type="file"] {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.upload-result {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #fafaf5;
+  font-size: 14px;
+}
+
+.upload-result h4 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--primary);
+}
+
+.upload-result.success {
+  background: var(--success-bg);
+  border-color: #b5d8c5;
+}
+.upload-result.success h4 { color: var(--success); }
+
+.upload-result.error {
+  background: var(--danger-bg);
+  border-color: #f5c0bb;
+}
+.upload-result.error h4 { color: var(--danger); }
+
+.upload-result ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.upload-result .result-section {
+  margin-bottom: 10px;
+}
+
+.upload-result .result-label {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.upload-result table.data {
+  background: #fff;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  background: #f0eee8;
+  border-radius: 3px;
+}
+
+/* ===========================
+   単元選択画面（units.html）
+   =========================== */
+
+.unit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.unit-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 18px 16px;
+  background: #fff;
+  cursor: pointer;
+  transition: all .15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.unit-card:hover:not(.disabled) {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.unit-card.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f5f4f0;
+}
+
+.unit-card.cleared {
+  border-color: var(--success);
+  background: linear-gradient(180deg, #f3faf5 0%, #ffffff 100%);
+}
+
+.unit-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.unit-card-head h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--primary);
+  line-height: 1.4;
+}
+
+.unit-card.cleared .unit-card-head h3 {
+  color: var(--success);
+}
+
+.unit-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.unit-badge.cleared-badge {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+/* 連続記録ドット */
+.streak-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.streak-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.streak-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  display: inline-block;
+}
+
+.streak-dot.filled {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.unit-card.cleared .streak-dot.filled {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.streak-text {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.unit-card.cleared .streak-text {
+  color: var(--success);
+}
+
+/* ===========================
+   受験画面（quiz.html）追加分
+   =========================== */
+
+.quiz-header {
+  margin-bottom: 16px;
+}
+
+.quiz-mode-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.quiz-unit-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 2px;
+}
+
+/* ===========================
+   結果画面（result.html）追加分
+   =========================== */
+
+.score-banner.perfect {
+  background: linear-gradient(180deg, #fdf8ec 0%, #ffffff 100%);
+  border-color: var(--accent);
+}
+
+.score-banner.perfect .big {
+  color: var(--accent);
+}
+
+.score-banner.perfect .label {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.streak-update {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+.streak-headline {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: 0.02em;
+}
+
+.streak-headline.cleared {
+  color: var(--success);
+}
+
+.streak-headline.perfect {
+  color: var(--accent);
+}
+
+.streak-headline.reset {
+  color: var(--danger);
+}
+
+.streak-dots-big {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.streak-dot.big {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
+.streak-counts {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.streak-now {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.streak-best {
+  color: var(--accent);
+}
+
+/* ユーティリティ */
+.text-center { text-align: center; }
+.mb-0  { margin-bottom: 0; }
+.mb-16 { margin-bottom: 16px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+
+/* ===== Phase 1: 進捗サマリー / 履歴種別 / 単元メタ ===== */
+
+/* units.html 進捗サマリーバー */
+.progress-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.summary-count {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.summary-slash { color: var(--muted); font-weight: 400; }
+.summary-status {
+  font-size: 14px;
+  color: var(--muted);
+}
+.summary-status.ready { color: var(--accent); font-weight: 600; }
+.summary-status.graduated { color: var(--success); font-weight: 600; }
+
+/* 単元カード: 最終受験日 */
+.unit-last {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.unit-last-none { font-style: italic; opacity: .8; }
+
+
+@media (max-width: 480px) {
+  .app-shell { padding: 20px 16px 60px; }
+  .card { padding: 20px; }
+  .header h1 { font-size: 18px; }
+  .question-text { font-size: 16px; }
+  .score-banner .big { font-size: 44px; }
+  .unit-grid { grid-template-columns: 1fr; }
+  .streak-headline { font-size: 17px; }
+}
+
+/* === 即時正誤判定（回答直後フィードバック） === */
+.choices.locked .choice { cursor: default; }
+.choices.locked .choice:hover { border-color: var(--border); }
+
+/* 穴埋め（上級）の入力UI。input[type=text] の既存スタイルを流用する。 */
+.fill-in { margin: 8px 0 0; }
+.fill-in-blank { margin: 0 0 12px; }
+.fill-in-blank label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+.fill-in-submit { margin-top: 4px; }
+
+.choice.correct {
+  border-color: var(--success);
+  background: var(--success-bg);
+}
+.choice.correct .marker {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+.choice.wrong {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+.choice.wrong .marker {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* 判定バッジ（〇 / ×）と解説パネル */
+.feedback {
+  margin-top: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.feedback.is-correct { border-color: var(--success); }
+.feedback.is-wrong   { border-color: var(--danger); }
+
+.feedback-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  font-weight: 700;
+}
+.feedback.is-correct .feedback-head {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.feedback.is-wrong .feedback-head {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.feedback-mark {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.feedback-explanation {
+  padding: 14px 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+.feedback-explanation .label {
+  display: block;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: .04em;
+}
+.feedback-explanation .body {
+  display: block;
+  line-height: 1.7;
+}
+
+/* 中止ボタン */
+.quiz-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.btn-abort {
+  font-size: .85rem;
+  padding: 6px 14px;
+  background: #fff;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-abort:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
+
+/* === RAG生成メトリクス（結果画面） === */
+.rag-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.rag-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.rag-metric .rm-key {
+  font-size: .72rem;
+  color: var(--muted);
+  letter-spacing: .04em;
+}
+.rag-metric .rm-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ===== 管理画面: 受験者一覧の進捗チップ・受験者リンク ===== */
+.prog-chip {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 8px;
+  margin: 2px 2px 2px 0;
+  border-radius: 999px;
+  background: #f0f1f4;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.prog-chip--cleared {
+  background: var(--success-bg);
+  color: var(--success);
+  font-weight: 600;
+}
+.prog-cell { line-height: 1.9; }
+.cleared-num { text-align: center; font-weight: 600; }
+.user-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.user-link:hover { opacity: .8; }
+
+/* ===== 管理画面: 個別履歴の行全体を正答率バンドで色付け（数値は非表示） ===== */
+.hist-table td { border-left: none; }
+.hist-row--high td { background: var(--success-bg); }
+.hist-row--mid  td { background: #fff4e0; }
+.hist-row--low  td { background: var(--danger-bg); }
+.hist-row--high td:first-child { box-shadow: inset 4px 0 0 var(--success); }
+.hist-row--mid  td:first-child { box-shadow: inset 4px 0 0 #c98a16; }
+.hist-row--low  td:first-child { box-shadow: inset 4px 0 0 var(--danger); }
+.hist-legend { margin-top: 10px; font-size: 12px; }
+.hist-legend .lg { padding: 1px 6px; border-radius: 8px; margin: 0 2px; }
+.hist-legend .lg-high { background: var(--success-bg); color: var(--success); }
+.hist-legend .lg-mid  { background: #fff4e0; color: #8a6d2f; }
+.hist-legend .lg-low  { background: var(--danger-bg); color: var(--danger); }
+
+/* ===== 異議申し立て（チャレンジ） ===== */
+/* 受験画面: 解説パネル内の申し立てボタン */
+.feedback-actions {
+  padding: 12px 16px 14px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.btn-challenge { font-size: .82rem; padding: 6px 14px; }
+.challenge-done { font-size: .82rem; color: var(--success); font-weight: 600; }
+
+/* モーダル */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-card h2 { margin: 0 0 10px; font-size: 18px; color: var(--primary); }
+.modal-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  resize: vertical;
+}
+/* 受験画面: 縦の余白を詰めてスクロールを減らす */
+.app-shell--quiz .header { margin-bottom: 16px; padding-bottom: 10px; }
+.app-shell--quiz .card { padding: 18px; }
+.app-shell--quiz .question-text { margin-bottom: 12px; }
+.app-shell--quiz .quiz-header { margin-bottom: 8px; }
+.app-shell--quiz .progress-meta { margin-bottom: 4px; }
+.app-shell--quiz .choices { gap: 8px; }
+/* はい/いいえ（2択）は横並び */
+.choices--inline { flex-direction: row; }
+.choices--inline .choice { flex: 1; justify-content: center; }
+
+
+/* ステータスバッジ（マイページ・管理画面共通） */
+.ch-status {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eef0f3;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ch-status--open     { background: #fff4e0; color: #8a6d2f; }
+.ch-status--accepted { background: #e7f0fb; color: var(--primary); }
+.ch-status--closed   { background: var(--success-bg); color: var(--success); }
+.ch-status--rejected { background: var(--danger-bg); color: var(--danger); }
+
+/* 管理画面: チャレンジカード */
+.ch-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  background: var(--surface);
+}
+.ch-card--open { border-left: 4px solid #c98a16; }
+.ch-card--accepted { border-left: 4px solid var(--primary); }
+.ch-card--closed { border-left: 4px solid var(--success); }
+.ch-card--rejected { border-left: 4px solid var(--danger); }
+.ch-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.ch-reason { margin: 6px 0; }
+.ch-question { font-weight: 600; margin: 8px 0 4px; }
+.ch-choices { margin: 4px 0; padding-left: 20px; }
+.ch-choices li.ch-correct { color: var(--success); font-weight: 600; }
+.ch-meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.ch-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.ch-actions .btn { font-size: .82rem; padding: 6px 14px; }
+.ch-field-label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 2px; }
+.ch-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+/* 管理画面: 異議申し立て受信箱（ヘッダ右上のバッジ付きボタン） */
+.inbox-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inbox-btn:hover { background: #f0f1f4; }
+.inbox-btn.has-unread { border-color: var(--accent); }
+.inbox-badge {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* 異議申し立てモーダル（管理画面・一覧用に広め） */
+.modal-card--wide { max-width: 760px; }
+.ch-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* 暫定スコア（結果画面） */
+.provisional-note {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid #c98a16;
+  background: #fff4e0;
+  color: #8a6d2f;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.badge-challenge {
+  background: #fff4e0 !important;
+  color: #8a6d2f !important;
+  margin-left: 6px;
+}
+.review-item.challenged { box-shadow: inset 4px 0 0 #c98a16; }
+
+/* マイページ: タブ */
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tab:hover { background: #f0f1f4; }
+.tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* 暫定（未処理チャレンジあり）の行を薄い黄色で塗る */
+.row-pending td { background: #fffbe6; }
+.pending-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fff4e0;
+  color: #8a6d2f;
+  margin-left: 4px;
+}

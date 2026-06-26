@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+*.env
+!.env.example
+
+# SQLite / セッションDB / 一時生成物
+*.db
+*.sqlite
+*.sqlite3
+backend/quiz_sessions.db
+*.log
+
+# 原本（著作権のためコミットしない。実体は手動配置）
+backend/source/*.pdf
+backend/source/*.txt
+source/*.pdf
+source/*.txt
+
+# IDE
+.vscode/
+.idea/
+.DS_Store

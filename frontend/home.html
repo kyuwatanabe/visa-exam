@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ビザ検定 - 難易度選択</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="header">
+      <div class="header-main">
+        <h1>ビザ検定</h1>
+        <p class="subtitle" id="user-label"></p>
+      </div>
+    </header>
+
+    <div id="loading" class="loading">読み込み中…</div>
+
+    <div id="content" style="display:none;">
+      <!-- 難易度選択 -->
+      <section class="card">
+        <h2>難易度選択</h2>
+        <div class="level-grid" id="level-grid">
+          <div class="loading">読み込み中…</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/assets/common.js"></script>
+  <script>
+    const levelGrid = document.getElementById("level-grid");
+    const userLabel = document.getElementById("user-label");
+
+    // LEVELS / LEVEL_NAMES / requireLogin / mountHeaderNav は common.js に共通化
+
+    let levels = [];
+
+    // 未ログインはログイン画面（トップ）へ。ログイン中なら難易度選択を表示する。
+    async function init() {
+      const me = await requireLogin();
+      if (!me) return;
+      mountHeaderNav("home");
+      userLabel.textContent = `受験者：${me.display_name}`;
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("content").style.display = "block";
+      loadLevels();
+    }
+
+    // 難易度カードを押したら単元選択画面へ。
+    function goToUnits(levelId) {
+      const params = new URLSearchParams({ level: levelId });
+      location.href = `/units.html?${params.toString()}`;
+    }
+
+    async function loadLevels() {
+      try {
+        // 観点メタのあるレベルから難易度を導出する（出題対象=ビザ種別単元のみ）
+        const res = await fetch("/api/rag/cells");
+        const data = await res.json();
+        const counts = {};
+        for (const cell of (data.cells || [])) {
+          counts[cell.level] = (counts[cell.level] || 0) + 1;
+        }
+        levels = LEVELS.map((id) => ({
+          id,
+          name: LEVEL_NAMES[id] || id,
+          available: (counts[id] || 0) > 0,
+          unit_count: counts[id] || 0,
+        }));
+        renderLevels();
+      } catch (e) {
+        levelGrid.innerHTML = '<div class="empty">難易度情報の取得に失敗しました</div>';
+      }
+    }
+
+    function renderLevels() {
+      levelGrid.innerHTML = "";
+      for (const lv of levels) {
+        const div = document.createElement("div");
+        div.className = "level-card" + (lv.available ? "" : " disabled");
+        div.dataset.id = lv.id;
+
+        const meta = lv.available
+          ? `<div class="meta">${lv.unit_count}単元</div>`
+          : `<div class="coming-soon">COMING SOON</div>`;
+        div.innerHTML = `<h3>${lv.name}</h3>${meta}`;
+
+        if (lv.available) {
+          div.addEventListener("click", () => goToUnits(lv.id));
+        }
+        levelGrid.appendChild(div);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

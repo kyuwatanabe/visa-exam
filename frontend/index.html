@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ビザ検定 - ログイン</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="header">
+      <h1>ビザ検定</h1>
+      <!-- DEV ONLY（撤去予定）: ボタン撤去時はこの div ごと削除する -->
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+        <!-- ===== DEV ONLY（撤去予定）: 管理画面確認用デモデータ生成ボタン ===== -->
+        <!-- 撤去箇所: このブロック / 下部の DEV ONLY スクリプト / backend/routes_dev.py /
+             main.py の include / config.py の DEMO_SEED_ENABLED -->
+        <button id="dev-seed-btn" type="button" hidden
+                style="font-size: 12px; padding: 4px 10px; border: 1px dashed #b58900;
+                       border-radius: 6px; background: #fdf6e3; color: #b58900;
+                       cursor: pointer; white-space: nowrap;"
+                title="構築段階専用。管理画面確認用のダミー受験者10人分のデータを作成します。">
+          ダミーデータ生成
+        </button>
+        <!-- ===== /DEV ONLY ===== -->
+      </div>
+    </header>
+
+    <!-- 認証カード（ログイン／新規登録）。トップはログイン専用。
+         ログイン成功・既ログインなら難易度選択画面（home.html）へ遷移する。 -->
+    <section class="card" id="auth-card">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <button type="button" class="btn" id="tab-login">ログイン</button>
+        <button type="button" class="btn btn-secondary" id="tab-register">新規登録</button>
+      </div>
+      <div id="auth-fields">
+        <label for="auth-email">メールアドレス</label>
+        <input type="email" id="auth-email" maxlength="254" autocomplete="username">
+        <label for="auth-password" style="margin-top: 8px; display: block;">パスワード</label>
+        <input type="password" id="auth-password" maxlength="128" autocomplete="current-password">
+        <div id="register-only" hidden>
+          <label for="auth-display-name" style="margin-top: 8px; display: block;">表示名（管理画面・結果に表示される名前）</label>
+          <input type="text" id="auth-display-name" maxlength="50" autocomplete="off" placeholder="例：田中太郎">
+          <p class="muted" style="margin-top: 6px;">パスワードは8文字以上。</p>
+        </div>
+        <p class="muted" id="auth-error" style="color: var(--danger); margin-top: 8px;" hidden></p>
+        <button type="button" class="btn" id="auth-submit" style="margin-top: 12px;">ログイン</button>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const HOME_URL = "/home.html";   // ログイン後の遷移先（難易度選択画面）
+    const authError = document.getElementById("auth-error");
+
+    let authMode = "login"; // "login" | "register"
+
+    // --- 認証UI ---
+    function setAuthMode(mode) {
+      authMode = mode;
+      document.getElementById("register-only").hidden = mode !== "register";
+      document.getElementById("auth-submit").textContent = mode === "login" ? "ログイン" : "登録して始める";
+      document.getElementById("tab-login").className = mode === "login" ? "btn" : "btn btn-secondary";
+      document.getElementById("tab-register").className = mode === "register" ? "btn" : "btn btn-secondary";
+      authError.hidden = true;
+    }
+    document.getElementById("tab-login").addEventListener("click", () => setAuthMode("login"));
+    document.getElementById("tab-register").addEventListener("click", () => setAuthMode("register"));
+
+    async function submitAuth() {
+      const email = document.getElementById("auth-email").value.trim();
+      const password = document.getElementById("auth-password").value;
+      authError.hidden = true;
+      try {
+        let res;
+        if (authMode === "register") {
+          const displayName = document.getElementById("auth-display-name").value.trim();
+          res = await fetch("/api/auth/register", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password, display_name: displayName }),
+          });
+        } else {
+          res = await fetch("/api/auth/login", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "失敗しました");
+        location.href = HOME_URL;   // 難易度選択画面へ
+      } catch (e) {
+        authError.textContent = e.message;
+        authError.hidden = false;
+      }
+    }
+    document.getElementById("auth-submit").addEventListener("click", submitAuth);
+    document.getElementById("auth-password").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitAuth();
+    });
+
+    // 既にログイン済みなら難易度選択画面へ送る（トップ＝ログイン専用のため）。
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) location.href = HOME_URL;
+      } catch (e) {}
+    }
+
+    setAuthMode("login");
+    checkSession();
+  </script>
+
+  <!-- ===== DEV ONLY（撤去予定）: デモデータ生成ボタンの動作 ===== -->
+  <script>
+    (function () {
+      const btn = document.getElementById("dev-seed-btn");
+      if (!btn) return;
+
+      // サーバ側で有効なときだけボタンを表示する（無効時は存在ごと隠す）
+      fetch("/api/dev/seed-demo")
+        .then((r) => (r.ok ? r.json() : { enabled: false }))
+        .then((d) => { if (d.enabled) btn.hidden = false; })
+        .catch(() => {});
+
+      btn.addEventListener("click", async () => {
+        const ok = confirm(
+          "管理画面確認用のダミー受験者10人分のデータを作成します。\n" +
+          "同名のダミー受験者の既存記録は削除して作り直します。\n" +
+          "（構築段階専用の機能です）\n\n実行しますか？"
+        );
+        if (!ok) return;
+        btn.disabled = true;
+        btn.textContent = "生成中…";
+        try {
+          const res = await fetch("/api/dev/seed-demo", { method: "POST" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "生成に失敗しました");
+          alert(`ダミーデータを作成しました。\n受験者 ${data.users} 人 / 受験 ${data.attempts} 回\n管理画面で確認できます。`);
+        } catch (e) {
+          alert("失敗: " + e.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "ダミーデータ生成";
+        }
+      });
+    })();
+  </script>
+  <!-- ===== /DEV ONLY ===== -->
+</body>
+</html>

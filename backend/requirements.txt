@@ -1,0 +1,10 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.12
+# anthropic は httpx 0.28+ で起きる旧SDKの proxies 初期化バグを含まないバージョンに固定する。
+# （httpx 側の固定/ダウングレードは対症療法のため行わない。最新 httpx 0.28.x で動作確認済み）
+anthropic==0.105.2
+pypdf==5.1.0
+# PostgreSQL接続（DATABASE_URL設定時のみ使用。未設定ならSQLiteで動作し本依存は読み込まれない）
+psycopg[binary]==3.3.4

@@ -1,0 +1,171 @@
+{
+  "level": "advanced",
+  "unit_id": "l_visa",
+  "unit_name": "Lビザ・企業内転勤",
+  "level_description": "上級。Lビザ・企業内転勤について、初級と同じ観点範囲を扱う。原本・観点に明記された内容のみから、重要語句を空欄にした穴埋め形式で出題する。創作した事実・数値・条文を含めない。",
+  "perspectives": [
+    {
+      "id": "al01",
+      "name": "Lビザとは",
+      "summary": "アメリカと国外の関連会社・拠点間を異動する管理者または専門知識を持つ人のためのビザ（Intra-Company Transferees）。",
+      "source_pages": [
+        46
+      ]
+    },
+    {
+      "id": "al02",
+      "name": "Lビザのペティション申請",
+      "summary": "まず移民局にペティションを申請し、認可証I-797が発行される。これが認められなければビザ申請はできない。",
+      "source_pages": [
+        46
+      ]
+    },
+    {
+      "id": "al03",
+      "name": "L-1AとL-1Bの区別",
+      "summary": "L-1Aはmanagerial positionに就く申請者、L-1Bはspecialized knowledgeを有する申請者。",
+      "source_pages": [
+        47
+      ]
+    },
+    {
+      "id": "al04",
+      "name": "派遣先（関連会社）の条件",
+      "summary": "出資比率50%以上で支配権を有する、50-50JVで対等な支配権と拒否権、出資50%未満でも実質的支配権を有する、のいずれか。",
+      "source_pages": [
+        47
+      ]
+    },
+    {
+      "id": "al05",
+      "name": "Lビザの国籍条件（Eビザとの違い）",
+      "summary": "企業の国籍は問われず、株主構成の変化の影響を受けない。日本にある外資系企業からアメリカの親会社への派遣にも利用できる。",
+      "source_pages": [
+        47
+      ]
+    },
+    {
+      "id": "al06",
+      "name": "申請者の在籍要件",
+      "summary": "直近3年間のうち1年以上継続して、アメリカ以外の関連会社・支店で申請カテゴリーでフルタイム雇用されている必要がある。",
+      "source_pages": [
+        47
+      ]
+    },
+    {
+      "id": "al07",
+      "name": "採用直後の派遣不可",
+      "summary": "1年以上の在籍要件があるため、採用した人をすぐにアメリカに派遣することはできない。アメリカ滞在期間はその1年に含まれない。",
+      "source_pages": [
+        47,
+        48
+      ]
+    },
+    {
+      "id": "al08",
+      "name": "L-1Aの管理職経験要件",
+      "summary": "1年以上のManager経験が必要。一般的に部下がいないとmanagerial positionとみなされず、大卒フルタイムの部下2人以上が目安。",
+      "source_pages": [
+        49
+      ]
+    },
+    {
+      "id": "al09",
+      "name": "Functional Manager",
+      "summary": "経営管理・経営企画など会社全体の経営に携わる場合、部下がいなくてもFunctional Managerとしてmanagerial positionが認められることがある。",
+      "source_pages": [
+        49
+      ]
+    },
+    {
+      "id": "al10",
+      "name": "specialized knowledgeとは",
+      "summary": "その会社固有で非常に深い知識。営業・人事・経理等では社内で数名しか知らない知識を有することは少なく、L-1B申請基準を満たすのは容易でない。",
+      "source_pages": [
+        49,
+        50
+      ]
+    },
+    {
+      "id": "al11",
+      "name": "技能工はspecialized knowledgeに該当しない",
+      "summary": "社内で数名しか知らないレベルでも、いわゆる技能工（skilled worker）の有するものはspecialized knowledgeとして認められない。",
+      "source_pages": [
+        50
+      ]
+    },
+    {
+      "id": "al12",
+      "name": "Lビザの発給・入国タイミング",
+      "summary": "I-797の就労開始日90日前から申請可。ただし就労開始日10日前まで入国不可。早期発給時はAnnotationに有効開始日が記載される。",
+      "source_pages": [
+        51
+      ]
+    },
+    {
+      "id": "al13",
+      "name": "Lビザの有効期間とI-797",
+      "summary": "Lビザの有効期間は通常5年。I-797の有効期間は初回3年で、ビザが有効でもI-797の期限以降は入国できない。",
+      "source_pages": [
+        51,
+        52
+      ]
+    },
+    {
+      "id": "al14",
+      "name": "L-1A/L-1Bの累積滞在期間",
+      "summary": "L-1Aは累積7年、L-1Bは累積5年まで、I-797を2年ずつ延長可能。L-1BからL-1Aへの変更で5年から7年に延長できる。",
+      "source_pages": [
+        52
+      ]
+    },
+    {
+      "id": "al15",
+      "name": "Lビザの延長（I-797延長）",
+      "summary": "I-797延長のペティション申請は期限の180日前から可能。提出後は期限を過ぎても結果が出るまで最長240日間合法的に就労できる。",
+      "source_pages": [
+        52
+      ]
+    },
+    {
+      "id": "al16",
+      "name": "Blanket Lビザとは",
+      "summary": "派遣先企業を移民局にBlanketリストとして登録することで、リスト内企業間の異動のビザ申請にペティション申請が不要になる。",
+      "source_pages": [
+        53
+      ]
+    },
+    {
+      "id": "al17",
+      "name": "Blanket Lでの異動の柔軟性",
+      "summary": "Blanketリスト登録企業間の異動はビザ切り替えや修正申請なしで就労できる。ただし実質的に業務が変わらない（50%未満の変化）ことが条件。",
+      "source_pages": [
+        53
+      ]
+    },
+    {
+      "id": "al18",
+      "name": "Blanket登録の会社条件",
+      "summary": "Petitionerは米国内にオフィスを持ち1年以上ビジネス、3つ以上の支店・子会社・関連会社を持つ、等の条件が加わる。",
+      "source_pages": [
+        54
+      ]
+    },
+    {
+      "id": "al19",
+      "name": "Blanket L-1Bの追加要件（profession）",
+      "summary": "Blanket L-1Bはspecialized knowledge professionalであることが求められ、資格やアカデミックなバックグラウンドを必要とする専門家であること。",
+      "source_pages": [
+        55
+      ]
+    },
+    {
+      "id": "al20",
+      "name": "Lビザの家族",
+      "summary": "配偶者と21歳未満未婚の子はL-2またはBlanket L-2を申請。配偶者は就労可能、子は就学可能。",
+      "source_pages": [
+        56
+      ]
+    }
+  ]
+}
