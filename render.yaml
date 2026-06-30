@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: visa-quiz-rag
+    runtime: python
+    region: singapore
+    plan: standard
+    branch: main
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.5
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: RAG_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: RAG_CHOICES
+        value: "3"
+      - key: RAG_SESSION_TTL_SEC
+        value: "7200"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: visa-quiz-db
+          property: connectionString
+    disks:
+      - name: source-files
+        mountPath: /opt/render/project/src/backend/source
+        sizeGB: 5
+
+databases:
+  - name: visa-quiz-db
+    databaseName: visaquiz
+    user: visaquiz
+    region: singapore
+    plan: basic-256mb
