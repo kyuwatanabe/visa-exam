@@ -121,6 +121,11 @@ def rag_quiz_start(req: RagStartRequest, user: dict = Depends(auth.get_current_u
     残り（テイル）は未消化観点としてセッションに保持し、/api/rag/quiz/continue で
     生成・追記する。開始時の体感待ちを縮めるためのヘッド／テイル分割。
     """
+    # ソースファイルが利用可能か確認
+    if not rag_source.is_available():
+        error_msg = rag_source.load_error()
+        raise HTTPException(503, error_msg or "RAG出題が利用できません。管理者がソースファイルをアップロードしてください。")
+    
     if req.level not in ALLOWED_LEVELS:
         raise HTTPException(400, f"level は {','.join(ALLOWED_LEVELS)} のいずれか。")
     if req.unit not in VISA_TYPE_UNITS:
@@ -175,6 +180,11 @@ def rag_quiz_continue(req: RagContinueRequest):
 
     ユーザーがヘッドを解いている間に裏で呼ばれる想定。pending が空なら何もしない。
     """
+    # ソースファイルが利用可能か確認
+    if not rag_source.is_available():
+        error_msg = rag_source.load_error()
+        raise HTTPException(503, error_msg or "RAG出題が利用できません。管理者がソースファイルをアップロードしてください。")
+    
     if not req.session_id:
         raise HTTPException(400, "session_id が必要です。")
     session = rag_session_store.get_session(req.session_id)
