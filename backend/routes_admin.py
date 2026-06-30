@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel, Field
 
 from backend import auth, db, rag_perspectives
-from backend.config import ADMIN_TOKEN, CHALLENGE_STATUS_LABELS, UNIT_CLEAR_REQUIRED_STREAK
+from backend.config import ADMIN_TOKEN, CHALLENGE_STATUS_LABELS, UNIT_CLEAR_REQUIRED_STREAK, SOURCE_DIR, SOURCE_PDF_PATH, SOURCE_TXT_PATH
 from backend.db import SOURCE_RAG
 
 router = APIRouter()
