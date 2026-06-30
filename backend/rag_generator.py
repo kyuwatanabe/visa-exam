@@ -116,9 +116,11 @@ def _build_user_prompt(
         lines.append(
             "# 出力JSON形式（このスキーマちょうど。questions は上の観点と同数）\n"
             '{ "questions": [ { "perspective_id": "観点id", '
-            '"question": "次のうち正しいものをすべて選びなさい。", '
+            '"question": "正しいものを1つ、または2つ選びなさい。", '
             f'"choices": [{"、".join([chr(34)+"選択肢"+str(i+1)+chr(34) for i in range(n_choices)])}], '
-            '"answer_indices": [0, 2], "explanation": "解説", "source_pages": [21] } ] }\n'
+            '"answer_indices": [0, 2], '
+            f'"choice_explanations": [{"、".join([chr(34)+"選択肢"+str(i+1)+"が正しい/誤りである理由"+chr(34) for i in range(n_choices)])}], '
+            '"source_pages": [21] } ] }\n'
             f"- choices はちょうど {n_choices} 個。\n"
             "- answer_indices は0始まりの配列で、**正しい選択肢を1〜2個**含める"
             "（必ず1個以上2個以下）。残りは誤答にする。\n"
@@ -126,9 +128,10 @@ def _build_user_prompt(
             "ばらつかせること（毎回2個などに偏らせない）。\n"
             "- 上級なので誤答は『一見もっともらしいが原本に照らすと誤り』にし、正答との差を"
             "細部に置く。明らかに無関係な選択肢ばかりにしない。\n"
-            "- 設問文は「次のうち正しいものをすべて選びなさい。」等に統一する"
-            "（正答の個数は文中に書かない）。\n"
-            "- explanation（解説）は、どれが正しくなぜかを自分の言葉で1〜2文で簡潔に述べる。"
+            "- 設問文は必ず「正しいものを1つ、または2つ選びなさい。」とする。\n"
+            f"- choice_explanations は choices と同じ {n_choices} 個。各選択肢について、"
+            "それが正しいか誤りかを明示し、その理由を原本に基づき1文で簡潔に述べる"
+            "（例:『正しい。○○だから。』『誤り。実際は○○のため。』）。"
             "**原本の文をそのまま引用したり「原本p.◯に『…』と記されており」のような引用形式で"
             "書いたりしてはならない。ページ番号への言及も不要。**"
         )
@@ -296,12 +299,26 @@ def _validate_multi(i: int, q: dict, expected_choices: int) -> dict:
         raise ValueError(f"questions[{i}].answer_indices に範囲外の値がある")
     if not (1 <= len(norm) <= 2):
         raise ValueError(f"questions[{i}].answer_indices は重複排除後も1〜2個であること")
+
+    # 選択肢ごとの解説（あれば長さを choices に合わせる。無ければ空で許容）
+    raw_ce = q.get("choice_explanations")
+    if isinstance(raw_ce, list):
+        choice_explanations = [
+            (s.strip() if isinstance(s, str) else "") for s in raw_ce
+        ]
+        if len(choice_explanations) < expected_choices:
+            choice_explanations += [""] * (expected_choices - len(choice_explanations))
+        choice_explanations = choice_explanations[:expected_choices]
+    else:
+        choice_explanations = [""] * expected_choices
+
     return {
         "perspective_id": q.get("perspective_id", ""),
         "type": "multi",
         "question": question.strip(),
         "choices": [c.strip() for c in choices],
         "answer_indices": norm,  # 0始まり、1〜2個
+        "choice_explanations": choice_explanations,
         "explanation": (q.get("explanation") or "").strip(),
         "source_pages": q.get("source_pages", []),
     }

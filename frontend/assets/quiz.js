@@ -225,8 +225,6 @@
         // 穴埋めは解説を出さず、空欄が埋まった原文を表示し、空欄だった箇所だけ強調する
         feedbackExplanationLabel.textContent = "正解";
         const ans = Array.isArray(result.correct_answers) ? result.correct_answers : [];
-        // 設問文（____ 入り）の各空欄を、順番に正解語句で埋める。
-        // 同じ語句が文中の他所にあっても、空欄位置だけがハイライトされる。
         const parts = (q.question || "").split(/_{2,}/);
         let html = "";
         parts.forEach((seg, idx) => {
@@ -236,6 +234,23 @@
             html += `<mark>${escapeHtml(a)}</mark>`;
           }
         });
+        feedbackExplanation.innerHTML = html;
+      } else if (q.type === "multi") {
+        // 複数選択は、各選択肢ごとに正誤と理由を一覧で示す
+        feedbackExplanationLabel.textContent = "解説";
+        const corr = Array.isArray(result.correct_choices) ? result.correct_choices : [];
+        const expl = Array.isArray(result.choice_explanations) ? result.choice_explanations : [];
+        const marks = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ";
+        let html = "<ul class='multi-explain'>";
+        (q.choices || []).forEach((c, i) => {
+          const ok = corr.includes(i);
+          const tag = ok
+            ? "<span class='mx-ok'>◯正</span>"
+            : "<span class='mx-ng'>×誤</span>";
+          const reason = expl[i] ? escapeHtml(expl[i]) : "";
+          html += `<li>${tag} ${marks[i] || (i + 1)}. ${escapeHtml(c)}${reason ? "<br><span class='mx-reason'>" + reason + "</span>" : ""}</li>`;
+        });
+        html += "</ul>";
         feedbackExplanation.innerHTML = html;
       } else {
         feedbackExplanationLabel.textContent = "解説";

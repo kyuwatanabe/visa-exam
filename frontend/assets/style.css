@@ -1293,3 +1293,10 @@ code {
 .choice.selected .marker--box { color: var(--accent); }
 .choice.correct .marker--box { color: var(--success); }
 .choice.wrong .marker--box { color: var(--danger); }
+
+/* 複数選択の選択肢別解説 */
+.multi-explain { margin: 4px 0 0; padding-left: 0; list-style: none; }
+.multi-explain li { margin: 0 0 8px; line-height: 1.5; }
+.mx-ok { color: var(--success); font-weight: 700; margin-right: 4px; }
+.mx-ng { color: var(--danger); font-weight: 700; margin-right: 4px; }
+.mx-reason { color: var(--muted); font-size: 13px; }

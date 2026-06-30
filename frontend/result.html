@@ -221,9 +221,10 @@
             : "";
           body = yourLine + corrLine;
         } else if (r.type === "multi") {
-          // 複数選択: 各選択肢に「正解」「あなたの回答」を併記
+          // 複数選択: 各選択肢に「正解」「あなたの選択」と理由を併記
           const userSel = Array.isArray(r.user_choices) ? r.user_choices : [];
           const corrSel = Array.isArray(r.correct_choices) ? r.correct_choices : [];
+          const expl = Array.isArray(r.choice_explanations) ? r.choice_explanations : [];
           body = (r.choices || []).map((c, i) => {
             const isCorrect = corrSel.includes(i);
             const userPicked = userSel.includes(i);
@@ -234,8 +235,9 @@
             const marker = String.fromCharCode(0x2160 + i);
             let suffix = "";
             if (userPicked) suffix += " ←あなたの選択";
-            if (isCorrect) suffix += " ◯正解";
-            return `<div class="choice-line ${cls}">${marker}. ${escapeHtml(c)}${suffix}</div>`;
+            suffix += isCorrect ? " ◯正" : " ×誤";
+            const reason = expl[i] ? `<div class="mx-reason">${escapeHtml(expl[i])}</div>` : "";
+            return `<div class="choice-line ${cls}">${marker}. ${escapeHtml(c)}${suffix}${reason}</div>`;
           }).join("");
         } else {
           // 選択式（初級Yes/No・中級）

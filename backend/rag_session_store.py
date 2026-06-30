@@ -71,6 +71,7 @@ def _to_stored(qid: str, q: dict) -> dict:
     elif qtype == "multi":
         stored["choices"] = q["choices"]
         stored["answer_indices"] = q.get("answer_indices", [])
+        stored["choice_explanations"] = q.get("choice_explanations", [])
     else:
         stored["choices"] = q["choices"]
         stored["answer"] = q["answer"]
@@ -126,6 +127,7 @@ def grade_answer(
             "is_correct": is_correct,
             "correct_choice": None,
             "correct_choices": sorted(correct_set),
+            "choice_explanations": q.get("choice_explanations", []),
             "correct_answers": None,
             "source_sentence": None,
         }
