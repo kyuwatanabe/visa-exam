@@ -122,3 +122,22 @@ const CHALLENGE_STATUS_LABEL = {
   closed: "クローズ",
   rejected: "却下",
 };
+
+// バージョン表示（フッターに追加）
+function initVersionDisplay() {
+  const version = "v1.2.5";
+  const footer = document.querySelector("footer");
+  if (footer) {
+    const versionEl = document.createElement("small");
+    versionEl.style.cssText = "color: #999; font-size: 11px; margin-left: auto;";
+    versionEl.textContent = version;
+    footer.appendChild(versionEl);
+  }
+}
+
+// ページロード時に実行
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initVersionDisplay);
+} else {
+  initVersionDisplay();
+}
