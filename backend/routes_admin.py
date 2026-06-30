@@ -342,19 +342,22 @@ async def admin_upload_source(token: str, file: UploadFile = File(...)):
 
 @router.delete("/api/{token}/admin/source/delete")
 async def delete_source_file(token: str, filename: str):
-    """ソースファイル（PDF or TXT）を削除。"""
+    """ソースファイルを削除。"""
     _check_token(token)
     
     try:
-        if filename == "visa_guide_v22_1.pdf":
-            if SOURCE_PDF_PATH.exists():
-                SOURCE_PDF_PATH.unlink()
-        elif filename == "visa_guide_v22_1.txt":
-            if SOURCE_TXT_PATH.exists():
-                SOURCE_TXT_PATH.unlink()
-        else:
-            raise HTTPException(400, "不正なファイル名です")
+        # backend/source/ 内のファイル削除を許可
+        file_path = SOURCE_DIR / filename
+        
+        # セキュリティ: ファイルが SOURCE_DIR 配下にあるか確認
+        if not file_path.resolve().is_relative_to(SOURCE_DIR.resolve()):
+            raise HTTPException(400, "不正なファイルパスです")
+        
+        if file_path.exists():
+            file_path.unlink()
         
         return {"ok": True, "deleted": filename}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, f"削除に失敗しました: {str(e)}")
