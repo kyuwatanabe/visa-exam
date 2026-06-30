@@ -37,10 +37,12 @@ services:
         fromDatabase:
           name: visa-quiz-db
           property: connectionString
-      #
-      # ※原本PDF（backend/source/visa_guide_v22_1.pdf）はリポジトリに含めない。
-      #   RAGをPDF根拠で動かす場合は、デプロイ後に手動配置する。
-      #   未配置でも観点要約（summary）を根拠に動作する。
+    # PDFなどのソースファイル永続化。管理画面からアップロードしたファイルはここに保存。
+    # デプロイ後も消えない。
+    disks:
+      - name: source-files
+        mountPath: /opt/render/project/src/backend/source
+        sizeGB: 5
 
 # データベース（Webサービスとは独立したサービスとして稼働。
 # Web側の再デプロイの影響を受けず、自動バックアップ付き）。
