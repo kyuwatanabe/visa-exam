@@ -345,22 +345,16 @@ async def delete_source_file(token: str, filename: str = Query(...)):
     """ソースファイルを削除。"""
     _check_token(token)
     
-    import sys
-    print(f"DEBUG: DELETE called with filename='{filename}'", file=sys.stderr)
-    
     # セキュリティ: パストトラバーサル防止
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(400, "不正なファイル名です")
     
     try:
         file_path = SOURCE_DIR / filename
-        print(f"DEBUG: file_path={file_path}, exists={file_path.exists()}", file=sys.stderr)
         
         if file_path.exists():
             file_path.unlink()
-            print(f"DEBUG: Deleted {file_path}", file=sys.stderr)
         
         return {"ok": True, "deleted": filename}
     except Exception as e:
-        print(f"DEBUG: Exception occurred: {type(e).__name__}: {str(e)}", file=sys.stderr)
         raise HTTPException(400, f"削除に失敗しました: {str(e)}")
