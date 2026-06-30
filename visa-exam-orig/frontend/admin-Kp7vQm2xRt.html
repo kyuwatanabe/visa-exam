@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ビザ検定 - 管理画面</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <div class="app-shell app-shell--wide">
+    <header class="header">
+      <h1>ビザ検定 - 管理画面</h1>
+      <button type="button" id="inbox-btn" class="inbox-btn" title="チャレンジ対応を開く">
+        チャレンジ対応
+        <span id="inbox-badge" class="inbox-badge" hidden>0</span>
+      </button>
+    </header>
+
+    <div id="loading" class="loading">読み込み中…</div>
+
+    <main id="content" style="display:none;">
+      <section class="card">
+        <h2>受験者一覧</h2>
+        <div id="users-area"></div>
+      </section>
+
+      <section class="card" id="history-card" style="display:none;">
+        <h2 id="history-title">受験履歴</h2>
+        <div id="history-area"></div>
+      </section>
+
+    </main>
+
+    <div id="error-area" class="card" style="display:none;">
+      <h2>読み込みエラー</h2>
+      <p id="error-message"></p>
+    </div>
+  </div>
+
+  <!-- チャレンジ対応モーダル -->
+  <div class="modal-overlay" id="challenges-modal" hidden>
+    <div class="modal-card modal-card--wide">
+      <div class="ch-modal-head">
+        <h2 style="margin:0;">チャレンジ対応</h2>
+        <span style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <label class="muted" style="font-size:13px;">状態:
+            <select id="challenge-status-filter">
+              <option value="">すべて</option>
+              <option value="open">未処理</option>
+              <option value="accepted">処理済</option>
+              <option value="closed">クローズ</option>
+              <option value="rejected">却下</option>
+            </select>
+          </label>
+          <button type="button" id="challenges-close" class="btn btn-secondary" style="padding:6px 12px; font-size:13px;">閉じる</button>
+        </span>
+      </div>
+      <div id="challenges-area"><div class="loading">読み込み中…</div></div>
+    </div>
+  </div>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/admin.js"></script>
+</body>
+</html>

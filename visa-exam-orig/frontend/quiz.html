@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ビザ検定 - 受験中</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <div class="app-shell app-shell--quiz">
+    <header class="header">
+      <div class="header-main">
+        <h1 id="app-title">ビザ検定</h1>
+        <p class="subtitle" id="user-label"></p>
+      </div>
+    </header>
+
+    <div id="loading" class="loading">問題を準備中…</div>
+
+    <main id="quiz-area" style="display:none;">
+      <div class="quiz-topbar">
+        <button class="btn btn-abort" id="abort-btn" type="button">検定を中止する</button>
+      </div>
+
+      <div class="quiz-header">
+        <div class="quiz-mode-label" id="quiz-mode-label"></div>
+        <div class="quiz-unit-name" id="quiz-unit-name"></div>
+      </div>
+
+      <div class="progress-meta">
+        <span class="step" id="step-label">1 / 10</span>
+        <span class="category" id="category-label"></span>
+      </div>
+      <div class="progress"><div class="bar" id="progress-bar" style="width:10%"></div></div>
+
+      <section class="card">
+        <p class="question-text" id="question-text"></p>
+        <div class="choices" id="choices"></div>
+        <div class="feedback" id="feedback" style="display:none;">
+          <div class="feedback-head">
+            <span class="feedback-mark" id="feedback-mark"></span>
+            <span id="feedback-label"></span>
+          </div>
+          <div class="feedback-explanation">
+            <span class="label">解説</span>
+            <span class="body" id="feedback-explanation-text"></span>
+          </div>
+          <div class="feedback-actions">
+            <button type="button" class="btn btn-secondary btn-challenge" id="challenge-btn">この回答にチャレンジする</button>
+            <span class="challenge-done" id="challenge-done" hidden>✓ チャレンジ済み</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="prev-btn" disabled>← 戻る</button>
+        <button class="btn" id="next-btn" disabled>次へ →</button>
+        <button class="btn" id="submit-btn" disabled style="display:none;">採点する</button>
+      </div>
+    </main>
+
+    <div id="error-area" class="card" style="display:none;">
+      <h2>エラー</h2>
+      <p id="error-message"></p>
+      <div class="btn-row">
+        <a class="btn btn-secondary" id="error-back" href="/">トップに戻る</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- チャレンジ・モーダル -->
+  <div class="modal-overlay" id="challenge-modal" hidden>
+    <div class="modal-card">
+      <h2>チャレンジする</h2>
+      <p class="muted">この設問の採点結果や出題内容に誤りがあると思われる場合、内容を記入して送信してください。管理者が確認し、認められた場合は判定が訂正されます。</p>
+      <label for="challenge-reason">理由</label>
+      <textarea id="challenge-reason" rows="4" maxlength="1000" placeholder="例：解説の根拠が原本の記載と異なる など"></textarea>
+      <p class="muted" id="challenge-error" style="color: var(--danger);" hidden></p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-secondary" id="challenge-cancel">キャンセル</button>
+        <button type="button" class="btn" id="challenge-submit">送信する</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/common.js"></script>
+  <script src="/assets/quiz.js"></script>
+  <script>
+    // 受験中の画面。ヘッダーから移動・ログアウトする場合は、回答が記録されない旨を確認する。
+    mountHeaderNav(null, { confirmLeave: "受験中です。移動するとここまでの回答は記録されません。移動しますか？" });
+  </script>
+</body>
+</html>

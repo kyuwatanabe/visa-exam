@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ビザ検定 - 単元選択</title>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="header">
+      <div class="header-main">
+        <h1 id="app-title">ビザ検定</h1>
+        <p class="subtitle" id="user-label"></p>
+      </div>
+    </header>
+
+    <div id="loading" class="loading">読み込み中…</div>
+
+    <main id="content" style="display:none;">
+      <section class="card">
+        <h2>単元選択</h2>
+        <p class="muted">
+          10問満点を <strong>通算3回</strong> でクリア。
+        </p>
+        <div class="progress-summary" id="progress-summary"></div>
+        <div class="unit-grid" id="unit-grid"></div>
+      </section>
+    </main>
+
+    <div id="error-area" class="card" style="display:none;">
+      <h2>エラー</h2>
+      <p id="error-message"></p>
+      <div class="btn-row">
+        <a class="btn btn-secondary" href="/home.html">難易度選択に戻る</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/common.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const level = params.get("level") || "beginner";
+
+    const loadingEl = document.getElementById("loading");
+    const contentEl = document.getElementById("content");
+    const errorArea = document.getElementById("error-area");
+    const errorMsg = document.getElementById("error-message");
+    const userLabel = document.getElementById("user-label");
+    const unitGrid = document.getElementById("unit-grid");
+
+    function showError(msg) {
+      loadingEl.style.display = "none";
+      contentEl.style.display = "none";
+      errorArea.style.display = "block";
+      errorMsg.textContent = msg;
+    }
+
+    // escapeHtml / levelLabel / mountHeaderNav は common.js に共通化
+
+    const appTitle = document.getElementById("app-title");
+    if (appTitle) appTitle.textContent = `ビザ検定（${levelLabel(level)}）`;
+    mountHeaderNav();
+
+    load();
+
+    async function load() {
+      try {
+        const p = new URLSearchParams({ level });
+        const res = await fetch(`/api/rag/units?${p.toString()}`);
+        if (res.status === 401) {
+          // 未ログイン → トップ（ログイン画面）へ
+          location.href = "/";
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        userLabel.textContent = `受験者：${data.username}`;
+        render(data);
+        loadingEl.style.display = "none";
+        contentEl.style.display = "block";
+      } catch (e) {
+        showError(e.message || "単元情報の取得に失敗しました");
+      }
+    }
+
+    // fmtDateShort は common.js に共通化
+
+    function render(data) {
+      const summary = document.getElementById("progress-summary");
+      const total = data.units.length;
+      const cleared = data.units.filter((u) => u.cleared).length;
+      const pct = total > 0 ? Math.round((cleared / total) * 100) : 0;
+      summary.innerHTML = `
+        <div class="summary-head">
+          <span class="summary-count">${cleared} <span class="summary-slash">/</span> ${total} 単元クリア</span>
+        </div>
+        <div class="progress"><div class="bar" style="width:${pct}%"></div></div>
+      `;
+
+      unitGrid.innerHTML = "";
+      for (const u of data.units) {
+        const card = document.createElement("div");
+        const classes = ["unit-card"];
+        if (u.cleared) classes.push("cleared");
+        if (!u.playable) classes.push("disabled");
+        card.className = classes.join(" ");
+
+        const required = u.required_streak || 3;
+        const perfectCount = u.perfect_count != null ? u.perfect_count : 0;
+        const dots = Array.from({ length: required })
+          .map((_, i) => `<span class="streak-dot${i < perfectCount ? " filled" : ""}"></span>`)
+          .join("");
+        const cleared_badge = u.cleared
+          ? `<span class="unit-badge cleared-badge">クリア済</span>` : "";
+        const lastDate = fmtDateShort(u.last_taken_at);
+        const lastText = lastDate
+          ? `<p class="unit-last">最終受験 ${lastDate}</p>`
+          : `<p class="unit-last unit-last-none">未挑戦</p>`;
+
+        card.innerHTML = `
+          <div class="unit-card-head">
+            <h3>${escapeHtml(u.name)}</h3>
+            ${cleared_badge}
+          </div>
+          <div class="streak-row">
+            <div class="streak-dots">${dots}</div>
+            <span class="streak-text">${perfectCount} / ${required}</span>
+          </div>
+          ${lastText}
+        `;
+        if (u.playable) {
+          card.addEventListener("click", () => {
+            const p = new URLSearchParams({ level, unit: u.id });
+            location.href = `/quiz.html?${p.toString()}`;
+          });
+        }
+        unitGrid.appendChild(card);
+      }
+    }
+  </script>
+</body>
+</html>
