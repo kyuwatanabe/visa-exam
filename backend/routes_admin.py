@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel, Field
 
 from backend import auth, db, rag_perspectives
@@ -341,7 +341,7 @@ async def admin_upload_source(token: str, file: UploadFile = File(...)):
 
 
 @router.delete("/api/{token}/admin/source/delete")
-async def delete_source_file(token: str, filename: str):
+async def delete_source_file(token: str, filename: str = Query(...)):
     """ソースファイルを削除。"""
     _check_token(token)
     
