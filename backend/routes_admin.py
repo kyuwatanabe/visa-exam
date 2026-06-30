@@ -277,7 +277,10 @@ def admin_close_challenge(token: str, challenge_id: int, req: AdminChallengeClos
 
 @router.get("/api/{token}/admin/source/files")
 def admin_get_source_files(token: str):
-    """保存されているソースファイル一覧を返す（ファイル名、サイズ、更新日時）。"""
+    """保存されているソースファイル一覧を返す（PDF のみ。名前・サイズ・更新日時）。
+
+    .txt（内部変換物）や .gitkeep などの管理用ファイルは一覧に出さない。
+    """
     _check_token(token)
     from backend.config import SOURCE_DIR
     from datetime import datetime
@@ -286,7 +289,7 @@ def admin_get_source_files(token: str):
     source_dir = SOURCE_DIR
     
     if source_dir.exists():
-        for path in sorted(source_dir.glob("*")):
+        for path in sorted(source_dir.glob("*.pdf")):
             if path.is_file():
                 stat = path.stat()
                 files.append({
@@ -301,14 +304,26 @@ def admin_get_source_files(token: str):
 
 @router.post("/api/{token}/admin/source/upload")
 async def admin_upload_source(token: str, file: UploadFile = File(...)):
-    """PDF をアップロードして、自動的にテキストに変換する。"""
+    """PDF をアップロードして、自動的にテキストに変換する。
+
+    アップロード時の元ファイル名を保持して保存する（PDF と、同名の .txt）。
+    RAG 読み込みは source ディレクトリ内の最新 .txt を使う。
+    """
     _check_token(token)
-    from backend.config import SOURCE_DIR, SOURCE_PDF_PATH, SOURCE_TXT_PATH
+    from backend.config import SOURCE_DIR
     from pypdf import PdfReader
     import io
+    import os
     
     if not file.filename.endswith('.pdf'):
         raise HTTPException(400, "PDF ファイルのみアップロード可能です。")
+    
+    # ファイル名のサニタイズ（パス区切りを除去し、ベース名のみにする）
+    base = os.path.basename(file.filename)
+    base = base.replace("/", "_").replace("\\", "_").strip()
+    stem = base[:-4] if base.lower().endswith(".pdf") else base  # 拡張子除去
+    if not stem:
+        stem = "source"
     
     try:
         # PDF ファイルを読み込み
@@ -316,11 +331,13 @@ async def admin_upload_source(token: str, file: UploadFile = File(...)):
         pdf_bytes = io.BytesIO(content)
         reader = PdfReader(pdf_bytes)
         
-        # PDF をローカルに保存
+        # 元のファイル名で PDF を保存
         SOURCE_DIR.mkdir(parents=True, exist_ok=True)
-        SOURCE_PDF_PATH.write_bytes(content)
+        pdf_path = SOURCE_DIR / f"{stem}.pdf"
+        txt_path = SOURCE_DIR / f"{stem}.txt"
+        pdf_path.write_bytes(content)
         
-        # テキストに変換して保存
+        # テキストに変換して、同名の .txt で保存
         text_parts = []
         for page in reader.pages:
             page_text = page.extract_text() or ""
@@ -328,7 +345,7 @@ async def admin_upload_source(token: str, file: UploadFile = File(...)):
         
         # ページごとにフォームフィード区切りで結合
         full_text = "\f".join(text_parts)
-        SOURCE_TXT_PATH.write_text(full_text, encoding="utf-8")
+        txt_path.write_text(full_text, encoding="utf-8")
         
         # キャッシュをリセット（RAGソース再読み込みを強制）
         from backend import rag_source
@@ -336,6 +353,7 @@ async def admin_upload_source(token: str, file: UploadFile = File(...)):
         
         return {
             "ok": True,
+            "filename": base,
             "pdf_size": len(content),
             "txt_size": len(full_text.encode("utf-8")),
             "pages": len(reader.pages),
@@ -358,6 +376,12 @@ async def delete_source_file(token: str, filename: str = Query(...)):
         
         if file_path.exists():
             file_path.unlink()
+        
+        # PDF を消したら、対応する同名 .txt（内部変換物）も併せて消す
+        if filename.lower().endswith(".pdf"):
+            txt_sibling = SOURCE_DIR / (filename[:-4] + ".txt")
+            if txt_sibling.exists():
+                txt_sibling.unlink()
         
         # キャッシュをリセット（RAGソース再読み込みを強制）
         from backend import rag_source
