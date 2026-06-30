@@ -67,6 +67,14 @@ def load_error() -> Optional[str]:
     return _LOAD_ERROR
 
 
+def reset_cache() -> None:
+    """キャッシュをリセット（ファイルアップロード後に呼び出す）。"""
+    global _PAGE_TEXTS, _LOAD_ERROR
+    with _LOCK:
+        _PAGE_TEXTS = None
+        _LOAD_ERROR = None
+
+
 def _logical_to_physical(logical_page: int) -> int:
     """論理ページ番号 → 物理ページ index（0始まり）。"""
     if SOURCE_PAGES_PER_SHEET <= 1:

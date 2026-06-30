@@ -330,6 +330,10 @@ async def admin_upload_source(token: str, file: UploadFile = File(...)):
         full_text = "\f".join(text_parts)
         SOURCE_TXT_PATH.write_text(full_text, encoding="utf-8")
         
+        # キャッシュをリセット（RAGソース再読み込みを強制）
+        from backend import rag_source
+        rag_source.reset_cache()
+        
         return {
             "ok": True,
             "pdf_size": len(content),
@@ -354,6 +358,10 @@ async def delete_source_file(token: str, filename: str = Query(...)):
         
         if file_path.exists():
             file_path.unlink()
+        
+        # キャッシュをリセット（RAGソース再読み込みを強制）
+        from backend import rag_source
+        rag_source.reset_cache()
         
         return {"ok": True, "deleted": filename}
     except Exception as e:
