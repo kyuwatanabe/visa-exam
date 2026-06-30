@@ -25,3 +25,8 @@ source/*.txt
 .vscode/
 .idea/
 .DS_Store
+-e 
+# Local development
+.cache/
+.npm-global/
+.local/

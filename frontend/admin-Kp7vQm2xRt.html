@@ -10,7 +10,10 @@
 <body>
   <div class="app-shell app-shell--wide">
     <header class="header">
-      <h1>ビザ検定 - 管理画面</h1>
+      <div>
+        <h1>ビザ検定 - 管理画面</h1>
+        <p style="font-size:12px; color:#999; margin:0;">v1.2.0 (ソース管理機能対応)</p>
+      </div>
       <button type="button" id="inbox-btn" class="inbox-btn" title="チャレンジ対応を開く">
         チャレンジ対応
         <span id="inbox-badge" class="inbox-badge" hidden>0</span>
@@ -20,6 +23,30 @@
     <div id="loading" class="loading">読み込み中…</div>
 
     <main id="content" style="display:none;">
+      <section class="card">
+        <h2>ソース管理</h2>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <h3 style="margin-top:0;">PDF をアップロード</h3>
+            <p style="font-size:13px; color:#666; margin:8px 0;">PDF ファイルをアップロードすると、自動的にテキストに変換されます。</p>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <input type="file" id="pdf-input" accept=".pdf" style="flex:1;">
+              <button type="button" id="upload-btn" class="btn btn-primary" style="padding:8px 16px;">アップロード</button>
+            </div>
+            <div id="upload-status" style="margin-top:8px; font-size:13px;"></div>
+          </div>
+
+          <hr style="margin:0; border:none; border-top:1px solid #e0e0e0;">
+
+          <div>
+            <h3 style="margin-top:0;">保存されているファイル</h3>
+            <div id="files-list" style="display:flex; flex-direction:column; gap:8px;">
+              <div class="loading" style="font-size:13px;">読み込み中…</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="card">
         <h2>受験者一覧</h2>
         <div id="users-area"></div>

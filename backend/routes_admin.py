@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 
 from backend import auth, db, rag_perspectives
@@ -273,3 +273,68 @@ def admin_close_challenge(token: str, challenge_id: int, req: AdminChallengeClos
             raise HTTPException(404, "チャレンジが見つかりません。")
         raise HTTPException(409, "認容済み（処理済）のチャレンジのみクローズできます。")
     return {"ok": True}
+
+
+@router.get("/api/{token}/admin/source/files")
+def admin_get_source_files(token: str):
+    """保存されているソースファイル一覧を返す（ファイル名、サイズ、更新日時）。"""
+    _check_token(token)
+    from backend.config import SOURCE_DIR
+    from datetime import datetime
+    
+    files = []
+    source_dir = SOURCE_DIR
+    
+    if source_dir.exists():
+        for path in sorted(source_dir.glob("*")):
+            if path.is_file():
+                stat = path.stat()
+                files.append({
+                    "name": path.name,
+                    "size": stat.st_size,
+                    "size_display": f"{stat.st_size / 1024:.1f} KB" if stat.st_size < 1024*1024 else f"{stat.st_size / (1024*1024):.1f} MB",
+                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                })
+    
+    return {"files": files}
+
+
+@router.post("/api/{token}/admin/source/upload")
+async def admin_upload_source(token: str, file: UploadFile = File(...)):
+    """PDF をアップロードして、自動的にテキストに変換する。"""
+    _check_token(token)
+    from backend.config import SOURCE_DIR, SOURCE_PDF_PATH, SOURCE_TXT_PATH
+    from pypdf import PdfReader
+    import io
+    
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(400, "PDF ファイルのみアップロード可能です。")
+    
+    try:
+        # PDF ファイルを読み込み
+        content = await file.read()
+        pdf_bytes = io.BytesIO(content)
+        reader = PdfReader(pdf_bytes)
+        
+        # PDF をローカルに保存
+        SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+        SOURCE_PDF_PATH.write_bytes(content)
+        
+        # テキストに変換して保存
+        text_parts = []
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            text_parts.append(page_text)
+        
+        # ページごとにフォームフィード区切りで結合
+        full_text = "\f".join(text_parts)
+        SOURCE_TXT_PATH.write_text(full_text, encoding="utf-8")
+        
+        return {
+            "ok": True,
+            "pdf_size": len(content),
+            "txt_size": len(full_text.encode("utf-8")),
+            "pages": len(reader.pages),
+        }
+    except Exception as e:
+        raise HTTPException(400, f"ファイル処理に失敗しました: {str(e)}")

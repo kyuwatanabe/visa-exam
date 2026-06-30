@@ -357,4 +357,85 @@
   }
 
   load();
+
+  // ==================== ソース管理 ====================
+  const pdfInput = document.getElementById("pdf-input");
+  const uploadBtn = document.getElementById("upload-btn");
+  const uploadStatus = document.getElementById("upload-status");
+  const filesList = document.getElementById("files-list");
+
+  async function loadSourceFiles() {
+    try {
+      const data = await fetchJson(`/api/${ADMIN_TOKEN}/admin/source/files`);
+      filesList.innerHTML = "";
+      if (data.files.length === 0) {
+        filesList.innerHTML = "<p style=\"font-size:13px; color:#999; margin:0;\">ファイルがアップロードされていません。</p>";
+        return;
+      }
+      data.files.forEach(file => {
+        const div = document.createElement("div");
+        div.style.cssText = "padding:8px; background:#f9f9f9; border-radius:4px; border-left:3px solid #2196F3;";
+        const date = new Date(file.modified);
+        const dateStr = date.toLocaleString("ja-JP");
+        div.innerHTML = `
+          <strong>${file.name}</strong><br>
+          <span style="font-size:12px; color:#666;">
+            サイズ: ${file.size_display} | 更新: ${dateStr}
+          </span>
+        `;
+        filesList.appendChild(div);
+      });
+    } catch (e) {
+      filesList.innerHTML = `<p style="color:red; font-size:13px;">読み込みエラー: ${e.message}</p>`;
+    }
+  }
+
+  if (uploadBtn) {
+    uploadBtn.addEventListener("click", async () => {
+      if (!pdfInput.files || pdfInput.files.length === 0) {
+        uploadStatus.textContent = "ファイルを選択してください。";
+        uploadStatus.style.color = "red";
+        return;
+      }
+
+      const file = pdfInput.files[0];
+      if (!file.name.endsWith(".pdf")) {
+        uploadStatus.textContent = "PDF ファイルのみアップロード可能です。";
+        uploadStatus.style.color = "red";
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadStatus.textContent = "アップロード中…";
+      uploadStatus.style.color = "#2196F3";
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch(`/api/${ADMIN_TOKEN}/admin/source/upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.detail || "アップロードに失敗しました。");
+        }
+
+        uploadStatus.textContent = `✓ アップロード完了 (${data.pages} ページ)`;
+        uploadStatus.style.color = "green";
+        pdfInput.value = "";
+        await loadSourceFiles();
+      } catch (e) {
+        uploadStatus.textContent = `✗ エラー: ${e.message}`;
+        uploadStatus.style.color = "red";
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+  }
+
+  // 初期化時にソースファイルを読み込む
+  loadSourceFiles();
 })();
