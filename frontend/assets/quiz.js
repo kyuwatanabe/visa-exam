@@ -218,23 +218,21 @@
       feedbackLabel.textContent = result.is_correct ? "正解" : "不正解";
 
       if (q.type === "fill_in") {
-        // 穴埋めは解説を出さず、空欄が埋まった原文を表示し、該当箇所を強調する
+        // 穴埋めは解説を出さず、空欄が埋まった原文を表示し、空欄だった箇所だけ強調する
         feedbackExplanationLabel.textContent = "正解";
-        const answers = Array.isArray(result.correct_answers) ? result.correct_answers : [];
-        const src = result.source_sentence || "";
-        if (src) {
-          // 原文中の正解語句をハイライト
-          let html = escapeHtml(src);
-          answers.forEach((a) => {
-            if (!a) return;
-            const safe = escapeHtml(a);
-            html = html.split(safe).join(`<mark>${safe}</mark>`);
-          });
-          feedbackExplanation.innerHTML = html;
-        } else {
-          // 原文が無い場合は正解語句のみ示す
-          feedbackExplanation.textContent = "正解: " + answers.join(" / ");
-        }
+        const ans = Array.isArray(result.correct_answers) ? result.correct_answers : [];
+        // 設問文（____ 入り）の各空欄を、順番に正解語句で埋める。
+        // 同じ語句が文中の他所にあっても、空欄位置だけがハイライトされる。
+        const parts = (q.question || "").split(/_{2,}/);
+        let html = "";
+        parts.forEach((seg, idx) => {
+          html += escapeHtml(seg);
+          if (idx < parts.length - 1) {
+            const a = ans[idx] || "";
+            html += `<mark>${escapeHtml(a)}</mark>`;
+          }
+        });
+        feedbackExplanation.innerHTML = html;
       } else {
         feedbackExplanationLabel.textContent = "解説";
         feedbackExplanation.textContent = result.explanation || "（解説はありません）";

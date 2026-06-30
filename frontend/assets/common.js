@@ -125,14 +125,14 @@ const CHALLENGE_STATUS_LABEL = {
 
 // バージョン表示（フッターに追加。footer が無ければ自動生成）
 function initVersionDisplay() {
-  const version = "v1.4.1";
+  const version = "v1.4.2";
   if (document.getElementById("app-version")) return;  // 二重表示防止
   const versionEl = document.createElement("div");
   versionEl.id = "app-version";
   versionEl.style.cssText =
-    "text-align: right; color: #555; font-size: 13px; font-weight: 600; padding: 10px 16px;";
+    "text-align: right; color: #555; font-size: 13px; font-weight: 600; padding: 6px 16px;";
   versionEl.textContent = version;
-  document.body.appendChild(versionEl);
+  document.body.insertBefore(versionEl, document.body.firstChild);
 }
 
 // ページロード時に実行
