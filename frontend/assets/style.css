@@ -908,6 +908,22 @@ code {
 }
 .fill-in-submit { margin-top: 4px; }
 
+/* 複数空欄は入力欄を横並びにする */
+.fill-in--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.fill-in--inline .fill-in-blank {
+  flex: 1 1 200px;
+  margin: 0;
+}
+.fill-in--inline .fill-in-submit {
+  flex-basis: 100%;
+  margin-top: 8px;
+}
+
 .choice.correct {
   border-color: var(--success);
   background: var(--success-bg);

@@ -286,8 +286,8 @@
 
   // 穴埋め（上級）の入力欄＋「回答する」ボタンを描画する
   function renderFillIn(q, isChecked) {
-    choicesEl.className = "fill-in" + (isChecked ? " locked" : "");
     const n = q.blank_count || 1;
+    choicesEl.className = "fill-in" + (n > 1 ? " fill-in--inline" : "") + (isChecked ? " locked" : "");
     const marks = "①②③④⑤⑥⑦⑧⑨⑩";
     const saved = Array.isArray(answers[currentIdx]) ? answers[currentIdx] : [];
     const inputs = [];
@@ -299,7 +299,6 @@
       const input = document.createElement("input");
       input.type = "text";
       input.autocomplete = "off";
-      input.placeholder = "分からない場合は空欄のままで可";
       input.value = saved[i] || "";
       input.disabled = isChecked;
       wrap.appendChild(label);
