@@ -125,7 +125,7 @@ const CHALLENGE_STATUS_LABEL = {
 
 // バージョン表示（フッターに追加）
 function initVersionDisplay() {
-  const version = "v1.3.0";
+  const version = "v1.3.1";
   const footer = document.querySelector("footer");
   if (footer) {
     const versionEl = document.createElement("small");

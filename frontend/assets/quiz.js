@@ -188,7 +188,15 @@
     stepLabel.textContent = `${currentIdx + 1} / ${totalExpected}`;
     categoryLabel.textContent = q.category ? q.category : "";
     progressBar.style.width = `${((currentIdx + 1) / totalExpected) * 100}%`;
-    questionText.textContent = q.question;
+    
+    // 穴埋め問題の場合は、質問文に空欄情報を追加
+    if (q.type === "fill_in") {
+      const blankIndices = Array.from({ length: q.blank_count || 0 }, (_, i) => i + 1);
+      const blanksDisplay = blankIndices.map(i => `(空欄 ${i})`).join(" ");
+      questionText.textContent = `${q.question}\n\n${blanksDisplay}`;
+    } else {
+      questionText.textContent = q.question;
+    }
 
     choicesEl.innerHTML = "";
     if (q.type === "fill_in") {
