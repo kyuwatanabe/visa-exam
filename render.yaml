@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: visa-quiz-rag
+    name: visa-exam
     runtime: python
     region: singapore
     plan: standard
