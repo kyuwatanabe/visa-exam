@@ -13,6 +13,8 @@ from typing import Callable, List, Optional, Tuple
 from backend import rag_perspectives, rag_source
 from backend.config import (
     ANTHROPIC_API_KEY,
+    CHOICES_BY_LEVEL,
+    DIFFICULTY_BY_LEVEL,
     QUESTION_FORMAT_BY_LEVEL,
     RAG_CHOICES,
     RAG_MAX_TOKENS,
@@ -34,8 +36,13 @@ _SYSTEM_INSTRUCTIONS = (
 
 
 def _format_for_level(level: str) -> str:
-    """レベル→出題形式（yesno / choice / fill_in）。未知レベルは choice。"""
+    """レベル→出題形式（yesno / choice）。未知レベルは choice。"""
     return QUESTION_FORMAT_BY_LEVEL.get(level, "choice")
+
+
+def _choices_for_level(level: str) -> int:
+    """レベル→選択肢数。未設定は全体既定 RAG_CHOICES。"""
+    return CHOICES_BY_LEVEL.get(level, RAG_CHOICES)
 
 
 class RAGGenerationError(Exception):
@@ -57,6 +64,9 @@ def _build_user_prompt(
     """
     lines: List[str] = []
     lines.append(f"# 難度\n{level} … {level_description}")
+    difficulty = DIFFICULTY_BY_LEVEL.get(level)
+    if difficulty:
+        lines.append(f"\n# 難易度の方針\n{difficulty}")
     lines.append("")
     lines.append(f"# 単元\n{unit_name}")
     lines.append("")
@@ -291,6 +301,7 @@ def generate_questions(
         )
     want = len(perspectives)
     fmt = _format_for_level(level)
+    n_choices = _choices_for_level(level)
 
     # 根拠テキスト: 渡された観点の source_pages を集約
     all_pages: List[int] = []
@@ -307,7 +318,7 @@ def generate_questions(
         level_description=meta.get("level_description", ""),
         perspectives=perspectives,
         fmt=fmt,
-        n_choices=RAG_CHOICES,
+        n_choices=n_choices,
     )
     # システムブロック: 指示は静的。原本テキストは大きく同一単元の連続生成で
     # 使い回せるため、キャッシュ対象（ephemeral）ブロックとして置く。
@@ -333,7 +344,7 @@ def generate_questions(
         attempts_used = attempt + 1
         try:
             raw, usage = call(system_blocks, user_prompt)
-            parsed = _parse_and_validate(raw, fmt, RAG_CHOICES)
+            parsed = _parse_and_validate(raw, fmt, n_choices)
             if len(parsed) < want:
                 # 要求した観点数に満たない生成は無音で通さずリトライ対象にする
                 raise ValueError(
@@ -361,7 +372,7 @@ def generate_questions(
         "perspective_ids": [p["id"] for p in perspectives],
         "grounding": grounding,
         "retries": attempts_used - 1,
-        "n_choices": RAG_CHOICES,
+        "n_choices": n_choices,
         "format": fmt,
     }
     return {"questions": questions, "metrics": metrics}

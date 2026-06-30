@@ -41,12 +41,29 @@ RAG_CHOICES = int(os.environ.get("RAG_CHOICES", "3"))            # 1問あたり
 
 # レベル別の出題形式（項目5）。
 #   yesno   … Yes/No 2択（はい/いいえ固定）。選択式採点を流用する。
-#   choice  … 選択式（RAG_CHOICES 択）。選択式採点を流用する。
-#   fill_in … 穴埋め（自由記述）。正解候補配列＋正規化で完全一致判定する（新採点系統）。
+#   choice  … 選択式（級別の選択肢数）。選択式採点を流用する。
 QUESTION_FORMAT_BY_LEVEL = {
     "beginner": "yesno",
     "intermediate": "choice",
-    "advanced": "fill_in",
+    "advanced": "choice",
+}
+# レベル別の選択肢数。yesno（初級）は固定2択なので対象外。
+#   中級 … 3択（比較的わかりやすい問題）
+#   上級 … 5択（紛らわしい問題）
+CHOICES_BY_LEVEL = {
+    "intermediate": 3,
+    "advanced": 5,
+}
+# レベル別の難易度指示（プロンプトに添える）。誤答の紛らわしさを級で変える。
+DIFFICULTY_BY_LEVEL = {
+    "intermediate": (
+        "比較的わかりやすい問題にする。誤答は原本に照らして明確に誤っている内容にし、"
+        "引っかけや紛らわしい表現は避ける。基本的な理解を問うやさしめの難度。"
+    ),
+    "advanced": (
+        "難しい問題にする。誤答は『一見もっともらしいが原本に照らすと誤り』という"
+        "紛らわしいものにし、正答と誤答の差を細部に置く。深い理解がないと選べない難度。"
+    ),
 }
 # Yes/No 出題で用いる固定の2択（はい=index0 / いいえ=index1）。
 YESNO_CHOICES = ("はい", "いいえ")
