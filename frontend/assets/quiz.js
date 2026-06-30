@@ -200,6 +200,8 @@
         return `［${mark}］`;
       });
       questionText.textContent = filled;
+    } else if (q.type === "multi") {
+      questionText.textContent = q.question;
     } else {
       questionText.textContent = q.question;
     }
@@ -207,6 +209,8 @@
     choicesEl.innerHTML = "";
     if (q.type === "fill_in") {
       renderFillIn(q, isChecked);
+    } else if (q.type === "multi") {
+      renderMulti(q, result, isChecked);
     } else {
       renderChoices(q, result, isChecked);
     }
@@ -284,6 +288,77 @@
       }
       choicesEl.appendChild(div);
     });
+  }
+
+  // 複数選択（上級）。正しいものを1〜2個選び「回答する」で送信する。
+  function renderMulti(q, result, isChecked) {
+    choicesEl.className = "choices" + (isChecked ? " locked" : "");
+    // 未採点中の選択状態（配列）。未選択なら空配列。
+    const sel = Array.isArray(answers[currentIdx]) ? answers[currentIdx].slice() : [];
+    const correct = (result && Array.isArray(result.correct_choices)) ? result.correct_choices : [];
+
+    q.choices.forEach((c, i) => {
+      const div = document.createElement("div");
+      let cls = "choice choice--multi";
+      if (isChecked) {
+        const isCorrect = correct.includes(i);
+        const userPicked = sel.includes(i);
+        if (isCorrect) cls += " correct";          // 正答は緑
+        else if (userPicked) cls += " wrong";      // 誤って選んだものは赤
+      } else if (sel.includes(i)) {
+        cls += " selected";
+      }
+      div.className = cls;
+      // チェックボックス風のマーカー
+      const box = (!isChecked && sel.includes(i)) || (isChecked && sel.includes(i)) ? "☑" : "☐";
+      div.innerHTML = `
+        <div class="marker marker--box">${box}</div>
+        <div class="text">${escapeHtml(c)}</div>
+      `;
+      if (!isChecked) {
+        div.addEventListener("click", () => {
+          const pos = sel.indexOf(i);
+          if (pos >= 0) sel.splice(pos, 1);
+          else sel.push(i);
+          answers[currentIdx] = sel.slice();
+          render();
+        });
+      }
+      choicesEl.appendChild(div);
+    });
+
+    if (isChecked) return;
+
+    // 「回答する」ボタン（1個以上選択で押せる）
+    const btn = document.createElement("button");
+    btn.className = "btn fill-in-submit";
+    btn.type = "button";
+    btn.textContent = "回答する";
+    btn.disabled = sel.length === 0;
+    btn.addEventListener("click", () => checkMulti(sel.slice()));
+    choicesEl.appendChild(btn);
+  }
+
+  // 複数選択の回答 → サーバーに1問だけ判定を問い合わせる
+  async function checkMulti(selected) {
+    if (checked[currentIdx] !== null) return;
+    answers[currentIdx] = selected;
+    try {
+      const res = await fetch("/api/quiz/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: questions[currentIdx].id, choices: selected, session_id: sessionId }),
+      });
+      if (!res.ok) {
+        let detail = "";
+        try { detail = (await res.json()).detail || ""; } catch (_) {}
+        throw new Error(detail || `判定に失敗しました (HTTP ${res.status})`);
+      }
+      checked[currentIdx] = await res.json();
+      render();
+    } catch (e) {
+      alert(e.message || "判定エラー。もう一度お試しください。");
+    }
   }
 
   // 穴埋め（上級）の入力欄＋「回答する」ボタンを描画する

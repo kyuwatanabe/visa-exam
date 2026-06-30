@@ -68,6 +68,9 @@ def _to_stored(qid: str, q: dict) -> dict:
     if qtype == "fill_in":
         stored["blanks"] = q.get("blanks", [])
         stored["source_sentence"] = q.get("source_sentence", "")
+    elif qtype == "multi":
+        stored["choices"] = q["choices"]
+        stored["answer_indices"] = q.get("answer_indices", [])
     else:
         stored["choices"] = q["choices"]
         stored["answer"] = q["answer"]
@@ -78,15 +81,17 @@ def grade_answer(
     q: dict,
     choice: Optional[int] = None,
     text_answers: Optional[List[str]] = None,
+    choices: Optional[List[int]] = None,
 ) -> dict:
     """1問を採点する。形式により照合方法を切り替える。
 
     Returns:
         {
-          "type": "choice" | "fill_in",
+          "type": "choice" | "fill_in" | "multi",
           "is_correct": bool,
-          "correct_choice": int | None,      # choice のとき
-          "correct_answers": [str] | None,   # fill_in のとき（各空欄の代表表記）
+          "correct_choice": int | None,        # choice のとき
+          "correct_choices": [int] | None,     # multi のとき（正答位置の集合）
+          "correct_answers": [str] | None,     # fill_in のとき（各空欄の代表表記）
         }
     """
     qtype = q.get("type", "choice")
@@ -107,8 +112,22 @@ def grade_answer(
             "type": "fill_in",
             "is_correct": is_correct,
             "correct_choice": None,
+            "correct_choices": None,
             "correct_answers": correct_answers,
             "source_sentence": q.get("source_sentence", ""),
+        }
+    if qtype == "multi":
+        correct_set = set(q.get("answer_indices", []))
+        selected_set = set(choices or [])
+        # 選んだ集合が正答集合とちょうど一致したら正解（過不足なし）
+        is_correct = bool(correct_set) and selected_set == correct_set
+        return {
+            "type": "multi",
+            "is_correct": is_correct,
+            "correct_choice": None,
+            "correct_choices": sorted(correct_set),
+            "correct_answers": None,
+            "source_sentence": None,
         }
     # choice（初級Yes/No・中級選択 共通）
     is_correct = choice == q.get("answer")
@@ -116,6 +135,7 @@ def grade_answer(
         "type": "choice",
         "is_correct": bool(is_correct),
         "correct_choice": q.get("answer"),
+        "correct_choices": None,
         "correct_answers": None,
         "source_sentence": None,
     }

@@ -45,7 +45,7 @@ RAG_CHOICES = int(os.environ.get("RAG_CHOICES", "3"))            # 1問あたり
 QUESTION_FORMAT_BY_LEVEL = {
     "beginner": "yesno",
     "intermediate": "choice",
-    "advanced": "choice",
+    "advanced": "multi",
 }
 # レベル別の選択肢数。yesno（初級）は固定2択なので対象外。
 #   中級 … 3択（比較的わかりやすい問題）

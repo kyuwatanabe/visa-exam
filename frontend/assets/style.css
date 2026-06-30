@@ -1278,3 +1278,18 @@ code {
   padding: 0 2px;
   border-radius: 2px;
 }
+
+/* 複数選択（上級）のチェックボックス風マーカー */
+.choice--multi { cursor: pointer; }
+.marker--box {
+  font-size: 18px;
+  line-height: 1;
+  background: transparent !important;
+  border: none !important;
+  color: var(--primary);
+  min-width: 22px;
+  text-align: center;
+}
+.choice.selected .marker--box { color: var(--accent); }
+.choice.correct .marker--box { color: var(--success); }
+.choice.wrong .marker--box { color: var(--danger); }

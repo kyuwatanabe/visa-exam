@@ -251,12 +251,13 @@ def check_answer(req: CheckRequest):
     if q is None:
         raise HTTPException(404, f"問題が見つからない: id={req.id}")
     graded = rag_session_store.grade_answer(
-        q, choice=req.choice, text_answers=req.text_answers
+        q, choice=req.choice, text_answers=req.text_answers, choices=req.choices
     )
     return {
         "id": q["id"],
         "type": graded["type"],
         "correct_choice": graded["correct_choice"],
+        "correct_choices": graded.get("correct_choices"),
         "correct_answers": graded["correct_answers"],
         "source_sentence": graded.get("source_sentence"),
         "is_correct": graded["is_correct"],
@@ -285,7 +286,7 @@ def submit_quiz(req: SubmitRequest, user: dict = Depends(auth.get_current_user))
         if q is None:
             continue
         graded = rag_session_store.grade_answer(
-            q, choice=ans.choice, text_answers=ans.text_answers
+            q, choice=ans.choice, text_answers=ans.text_answers, choices=ans.choices
         )
         if graded["is_correct"]:
             score += 1
@@ -298,8 +299,10 @@ def submit_quiz(req: SubmitRequest, user: dict = Depends(auth.get_current_user))
                 "question": q["question"],
                 "choices": q.get("choices"),
                 "user_choice": ans.choice,
+                "user_choices": ans.choices,
                 "user_text_answers": ans.text_answers,
                 "correct_choice": graded["correct_choice"],
+                "correct_choices": graded.get("correct_choices"),
                 "correct_answers": graded["correct_answers"],
                 "is_correct": graded["is_correct"],
                 "explanation": q.get("explanation", ""),

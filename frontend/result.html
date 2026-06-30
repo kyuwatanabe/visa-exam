@@ -220,6 +220,23 @@
             ? `<div class="choice-line correct-marker">正解例: ${escapeHtml(corr.join(" / "))}</div>`
             : "";
           body = yourLine + corrLine;
+        } else if (r.type === "multi") {
+          // 複数選択: 各選択肢に「正解」「あなたの回答」を併記
+          const userSel = Array.isArray(r.user_choices) ? r.user_choices : [];
+          const corrSel = Array.isArray(r.correct_choices) ? r.correct_choices : [];
+          body = (r.choices || []).map((c, i) => {
+            const isCorrect = corrSel.includes(i);
+            const userPicked = userSel.includes(i);
+            let cls = "";
+            if (isCorrect && userPicked) cls = "user-correct";
+            else if (userPicked && !isCorrect) cls = "user-wrong";
+            else if (isCorrect) cls = "correct-marker";
+            const marker = String.fromCharCode(0x2160 + i);
+            let suffix = "";
+            if (userPicked) suffix += " ←あなたの選択";
+            if (isCorrect) suffix += " ◯正解";
+            return `<div class="choice-line ${cls}">${marker}. ${escapeHtml(c)}${suffix}</div>`;
+          }).join("");
         } else {
           // 選択式（初級Yes/No・中級）
           body = (r.choices || []).map((c, i) => {

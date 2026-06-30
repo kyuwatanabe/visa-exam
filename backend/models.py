@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field
 class Answer(BaseModel):
     id: str
     choice: Optional[int] = None  # 選択式（初級Yes/No・中級）の0始まり選択
-    text_answers: Optional[List[str]] = None  # 穴埋め（上級）の各空欄の入力
+    choices: Optional[List[int]] = None  # 複数選択（上級）の0始まり選択の集合
+    text_answers: Optional[List[str]] = None  # 旧穴埋め（廃止）の各空欄の入力
 
 
 class SubmitRequest(BaseModel):
@@ -21,7 +22,8 @@ class CheckRequest(BaseModel):
     """1問だけの即時正誤判定リクエスト（履歴・進捗には一切影響しない）。"""
     id: str
     choice: Optional[int] = None        # 選択式（初級Yes/No・中級）の0始まり選択
-    text_answers: Optional[List[str]] = None  # 穴埋め（上級）の各空欄の入力
+    choices: Optional[List[int]] = None  # 複数選択（上級）の0始まり選択の集合
+    text_answers: Optional[List[str]] = None  # 旧穴埋め（廃止）の各空欄の入力
     # 正答はこのセッションから引く（RAG出題専用）。
     session_id: str
 

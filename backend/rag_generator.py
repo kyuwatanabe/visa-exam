@@ -112,6 +112,26 @@ def _build_user_prompt(
             "カタカナ、略称、別称、英字略号など、解答として正答扱いすべき表記）を併記する。\n"
             "- explanation は出力しない。choices や answer_index も出力しない。"
         )
+    elif fmt == "multi":
+        lines.append(
+            "# 出力JSON形式（このスキーマちょうど。questions は上の観点と同数）\n"
+            '{ "questions": [ { "perspective_id": "観点id", '
+            '"question": "次のうち正しいものをすべて選びなさい。", '
+            f'"choices": [{"、".join([chr(34)+"選択肢"+str(i+1)+chr(34) for i in range(n_choices)])}], '
+            '"answer_indices": [0, 2], "explanation": "解説", "source_pages": [21] } ] }\n'
+            f"- choices はちょうど {n_choices} 個。\n"
+            "- answer_indices は0始まりの配列で、**正しい選択肢を1〜2個**含める"
+            "（必ず1個以上2個以下）。残りは誤答にする。\n"
+            "- 重要: 正答が1個の設問と2個の設問を混在させ、正答の個数・位置を設問ごとに"
+            "ばらつかせること（毎回2個などに偏らせない）。\n"
+            "- 上級なので誤答は『一見もっともらしいが原本に照らすと誤り』にし、正答との差を"
+            "細部に置く。明らかに無関係な選択肢ばかりにしない。\n"
+            "- 設問文は「次のうち正しいものをすべて選びなさい。」等に統一する"
+            "（正答の個数は文中に書かない）。\n"
+            "- explanation（解説）は、どれが正しくなぜかを自分の言葉で1〜2文で簡潔に述べる。"
+            "**原本の文をそのまま引用したり「原本p.◯に『…』と記されており」のような引用形式で"
+            "書いたりしてはならない。ページ番号への言及も不要。**"
+        )
     else:  # choice
         lines.append(
             "# 出力JSON形式（このスキーマちょうど。questions は上の観点と同数）\n"
@@ -252,6 +272,41 @@ def _validate_fill_in(i: int, q: dict) -> dict:
     }
 
 
+def _validate_multi(i: int, q: dict, expected_choices: int) -> dict:
+    """複数選択（上級）の1問を検証し、内部形式に正規化する。
+
+    choices ちょうど expected_choices 個、answer_indices は1〜2個の正答位置。
+    """
+    question = q.get("question")
+    choices = q.get("choices")
+    answer_indices = q.get("answer_indices")
+    if not isinstance(question, str) or not question.strip():
+        raise ValueError(f"questions[{i}].question が不正")
+    if not isinstance(choices, list) or len(choices) != expected_choices:
+        raise ValueError(
+            f"questions[{i}].choices は {expected_choices} 個必要"
+            f"（実際 {len(choices) if isinstance(choices, list) else 'N/A'}）"
+        )
+    if not all(isinstance(c, str) and c.strip() for c in choices):
+        raise ValueError(f"questions[{i}].choices に空文字が含まれる")
+    if not isinstance(answer_indices, list) or not (1 <= len(answer_indices) <= 2):
+        raise ValueError(f"questions[{i}].answer_indices は1〜2個の配列が必要")
+    norm = sorted({a for a in answer_indices if isinstance(a, int)})
+    if not norm or not all(0 <= a < expected_choices for a in norm):
+        raise ValueError(f"questions[{i}].answer_indices に範囲外の値がある")
+    if not (1 <= len(norm) <= 2):
+        raise ValueError(f"questions[{i}].answer_indices は重複排除後も1〜2個であること")
+    return {
+        "perspective_id": q.get("perspective_id", ""),
+        "type": "multi",
+        "question": question.strip(),
+        "choices": [c.strip() for c in choices],
+        "answer_indices": norm,  # 0始まり、1〜2個
+        "explanation": (q.get("explanation") or "").strip(),
+        "source_pages": q.get("source_pages", []),
+    }
+
+
 def _parse_and_validate(raw: str, fmt: str, expected_choices: int) -> List[dict]:
     """LLM応答JSONをパースし、出題形式 fmt に応じて検証・正規化する。不正なら ValueError。"""
     data = json.loads(_strip_fences(raw))
@@ -266,6 +321,8 @@ def _parse_and_validate(raw: str, fmt: str, expected_choices: int) -> List[dict]
             out.append(_validate_yesno(i, q))
         elif fmt == "fill_in":
             out.append(_validate_fill_in(i, q))
+        elif fmt == "multi":
+            out.append(_validate_multi(i, q, expected_choices))
         else:
             out.append(_validate_choice(i, q, expected_choices))
     return out
