@@ -99,3 +99,32 @@ def text_for_pages(logical_pages: List[int]) -> str:
     for idx in sorted(physical_indices):
         chunks.append(f"［原本 p.{idx * SOURCE_PAGES_PER_SHEET}付近］\n{_PAGE_TEXTS[idx]}")
     return "\n\n".join(chunks)
+
+
+def text_for_keywords(keywords: List[str], max_pages: int = 6) -> str:
+    """キーワード群でページ（チャンク）を全文検索し、ヒットしたページ本文を連結して返す。
+
+    ページ番号の対応に依存せず、観点に関連する原本箇所を内容で引く。
+    各ページのヒット語数でスコアリングし、上位 max_pages 件を原本順に並べて返す。
+    原本未配置・ヒット無しなら空文字。
+    """
+    _ensure_loaded()
+    if _PAGE_TEXTS is None:
+        return ""
+    terms = [k.strip() for k in keywords if isinstance(k, str) and len(k.strip()) >= 2]
+    if not terms:
+        return ""
+    scored = []  # (score, idx)
+    for idx, page in enumerate(_PAGE_TEXTS):
+        score = 0
+        for t in terms:
+            score += page.count(t)
+        if score > 0:
+            scored.append((score, idx))
+    if not scored:
+        return ""
+    # スコア降順で上位を採り、表示は原本の登場順（idx昇順）に並べ直す
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    top_indices = sorted({idx for _, idx in scored[:max_pages]})
+    chunks = [_PAGE_TEXTS[i] for i in top_indices]
+    return "\n\n".join(chunks)

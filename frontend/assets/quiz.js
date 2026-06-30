@@ -354,7 +354,6 @@
     if (checked[currentIdx] !== null) return;
     answers[currentIdx] = choiceIdx;
     render();
-    choicesEl.className = "choices locked";
     try {
       const res = await fetch("/api/quiz/check", {
         method: "POST",
