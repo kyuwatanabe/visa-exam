@@ -374,15 +374,38 @@
       }
       data.files.forEach(file => {
         const div = document.createElement("div");
-        div.style.cssText = "padding:8px; background:#f9f9f9; border-radius:4px; border-left:3px solid #2196F3;";
+        div.style.cssText = "padding:8px; background:#f9f9f9; border-radius:4px; border-left:3px solid #2196F3; display:flex; justify-content:space-between; align-items:center;";
         const date = new Date(file.modified);
         const dateStr = date.toLocaleString("ja-JP");
-        div.innerHTML = `
+        
+        const infoDiv = document.createElement("div");
+        infoDiv.innerHTML = `
           <strong>${file.name}</strong><br>
           <span style="font-size:12px; color:#666;">
             サイズ: ${file.size_display} | 更新: ${dateStr}
           </span>
         `;
+        
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "削除";
+        deleteBtn.style.cssText = "padding:4px 12px; background:#f44336; color:white; border:none; border-radius:3px; cursor:pointer; font-size:12px;";
+        deleteBtn.addEventListener("click", async () => {
+          if (!confirm(`${file.name} を削除しますか？`)) return;
+          try {
+            const res = await fetch(`/api/${ADMIN_TOKEN}/admin/source/delete?filename=${encodeURIComponent(file.name)}`, {
+              method: "DELETE",
+            });
+            if (!res.ok) {
+              throw new Error("削除に失敗しました");
+            }
+            await loadSourceFiles();
+          } catch (e) {
+            alert(`削除エラー: ${e.message}`);
+          }
+        });
+        
+        div.appendChild(infoDiv);
+        div.appendChild(deleteBtn);
         filesList.appendChild(div);
       });
     } catch (e) {
