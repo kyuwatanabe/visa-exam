@@ -189,11 +189,16 @@
     categoryLabel.textContent = q.category ? q.category : "";
     progressBar.style.width = `${((currentIdx + 1) / totalExpected) * 100}%`;
     
-    // 穴埋め問題の場合は、質問文に空欄情報を追加
+    // 穴埋め問題の場合は、質問文中の ____ を「①②」のような番号付き空欄に置換
     if (q.type === "fill_in") {
-      const blankIndices = Array.from({ length: q.blank_count || 0 }, (_, i) => i + 1);
-      const blanksDisplay = blankIndices.map(i => `(空欄 ${i})`).join(" ");
-      questionText.textContent = `${q.question}\n\n${blanksDisplay}`;
+      let n = 0;
+      const marks = "①②③④⑤⑥⑦⑧⑨⑩";
+      const filled = (q.question || "").replace(/_{2,}/g, () => {
+        const mark = marks[n] || `(空欄${n + 1})`;
+        n += 1;
+        return `［${mark}］`;
+      });
+      questionText.textContent = filled;
     } else {
       questionText.textContent = q.question;
     }
@@ -267,16 +272,18 @@
   function renderFillIn(q, isChecked) {
     choicesEl.className = "fill-in" + (isChecked ? " locked" : "");
     const n = q.blank_count || 1;
+    const marks = "①②③④⑤⑥⑦⑧⑨⑩";
     const saved = Array.isArray(answers[currentIdx]) ? answers[currentIdx] : [];
     const inputs = [];
     for (let i = 0; i < n; i++) {
       const wrap = document.createElement("div");
       wrap.className = "fill-in-blank";
       const label = document.createElement("label");
-      label.textContent = n > 1 ? `空欄 ${i + 1}` : "解答";
+      label.textContent = n > 1 ? `空欄 ${marks[i] || i + 1}` : "解答";
       const input = document.createElement("input");
       input.type = "text";
       input.autocomplete = "off";
+      input.placeholder = "分からない場合は空欄のままで可";
       input.value = saved[i] || "";
       input.disabled = isChecked;
       wrap.appendChild(label);
@@ -290,14 +297,12 @@
     btn.className = "btn fill-in-submit";
     btn.type = "button";
     btn.textContent = "回答する";
-    const refresh = () => { btn.disabled = inputs.some((el) => !el.value.trim()); };
+    // 空欄でも回答できる（分からない場合の未記入を認める）。ボタンは常に押せる。
     inputs.forEach((el) => {
-      el.addEventListener("input", refresh);
       el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !btn.disabled) btn.click();
+        if (e.key === "Enter") btn.click();
       });
     });
-    refresh();
     btn.addEventListener("click", () => checkFillIn(inputs.map((el) => el.value.trim())));
     choicesEl.appendChild(btn);
   }

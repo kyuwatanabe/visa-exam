@@ -123,16 +123,16 @@ const CHALLENGE_STATUS_LABEL = {
   rejected: "却下",
 };
 
-// バージョン表示（フッターに追加）
+// バージョン表示（フッターに追加。footer が無ければ自動生成）
 function initVersionDisplay() {
-  const version = "v1.3.1";
-  const footer = document.querySelector("footer");
-  if (footer) {
-    const versionEl = document.createElement("small");
-    versionEl.style.cssText = "color: #999; font-size: 11px; margin-left: auto;";
-    versionEl.textContent = version;
-    footer.appendChild(versionEl);
-  }
+  const version = "v1.3.2";
+  if (document.getElementById("app-version")) return;  // 二重表示防止
+  const versionEl = document.createElement("div");
+  versionEl.id = "app-version";
+  versionEl.style.cssText =
+    "text-align: right; color: #999; font-size: 11px; padding: 8px 16px;";
+  versionEl.textContent = version;
+  document.body.appendChild(versionEl);
 }
 
 // ページロード時に実行
