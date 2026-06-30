@@ -125,7 +125,7 @@ const CHALLENGE_STATUS_LABEL = {
 
 // バージョン表示。#app-title があればその右に、無ければ画面上部右に出す。
 function initVersionDisplay() {
-  const version = "v1.6.2";
+  const version = "v1.6.3";
   if (document.getElementById("app-version")) return;  // 二重表示防止
   const versionEl = document.createElement("span");
   versionEl.id = "app-version";

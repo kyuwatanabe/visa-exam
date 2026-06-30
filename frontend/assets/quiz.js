@@ -83,7 +83,7 @@
 
   async function loadQuestions() {
     try {
-      loadingEl.textContent = "AIが問題を生成中…（数秒かかります）";
+      loadingEl.textContent = "問題を生成中…";
 
       // ヘッダ用の単元名取得（失敗は致命的でない）
       try {
