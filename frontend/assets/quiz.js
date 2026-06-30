@@ -230,8 +230,8 @@
 
   // 選択式（初級Yes/No・中級）の選択肢を描画する
   function renderChoices(q, result, isChecked) {
-    // 2択（はい/いいえ）は横並びにして縦の場所を節約する
-    const inline = (q.choices || []).length === 2 ? " choices--inline" : "";
+    // 2択以上は横並びにして縦の場所を節約する
+    const inline = (q.choices || []).length >= 2 ? " choices--inline" : "";
     choicesEl.className = "choices" + inline + (isChecked ? " locked" : "");
     q.choices.forEach((c, i) => {
       const div = document.createElement("div");
