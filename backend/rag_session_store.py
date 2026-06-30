@@ -67,6 +67,7 @@ def _to_stored(qid: str, q: dict) -> dict:
     }
     if qtype == "fill_in":
         stored["blanks"] = q.get("blanks", [])
+        stored["source_sentence"] = q.get("source_sentence", "")
     else:
         stored["choices"] = q["choices"]
         stored["answer"] = q["answer"]
@@ -107,6 +108,7 @@ def grade_answer(
             "is_correct": is_correct,
             "correct_choice": None,
             "correct_answers": correct_answers,
+            "source_sentence": q.get("source_sentence", ""),
         }
     # choice（初級Yes/No・中級選択 共通）
     is_correct = choice == q.get("answer")
@@ -115,6 +117,7 @@ def grade_answer(
         "is_correct": bool(is_correct),
         "correct_choice": q.get("answer"),
         "correct_answers": None,
+        "source_sentence": None,
     }
 
 

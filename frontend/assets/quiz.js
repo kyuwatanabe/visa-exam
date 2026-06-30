@@ -28,6 +28,7 @@
   const feedbackMark = document.getElementById("feedback-mark");
   const feedbackLabel = document.getElementById("feedback-label");
   const feedbackExplanation = document.getElementById("feedback-explanation-text");
+  const feedbackExplanationLabel = document.getElementById("feedback-explanation-label");
   // 異議申し立て（チャレンジ）
   const challengeBtn = document.getElementById("challenge-btn");
   const challengeDone = document.getElementById("challenge-done");
@@ -215,12 +216,29 @@
       feedbackEl.className = "feedback " + (result.is_correct ? "is-correct" : "is-wrong");
       feedbackMark.textContent = result.is_correct ? "〇" : "×";
       feedbackLabel.textContent = result.is_correct ? "正解" : "不正解";
-      let exp = result.explanation || "（解説はありません）";
-      // 穴埋めは選択肢で正解を示せないため、解説の先頭に正解例を添える
-      if (q.type === "fill_in" && Array.isArray(result.correct_answers) && result.correct_answers.length) {
-        exp = `正解例: ${result.correct_answers.join(" / ")}\n` + exp;
+
+      if (q.type === "fill_in") {
+        // 穴埋めは解説を出さず、空欄が埋まった原文を表示し、該当箇所を強調する
+        feedbackExplanationLabel.textContent = "正解";
+        const answers = Array.isArray(result.correct_answers) ? result.correct_answers : [];
+        const src = result.source_sentence || "";
+        if (src) {
+          // 原文中の正解語句をハイライト
+          let html = escapeHtml(src);
+          answers.forEach((a) => {
+            if (!a) return;
+            const safe = escapeHtml(a);
+            html = html.split(safe).join(`<mark>${safe}</mark>`);
+          });
+          feedbackExplanation.innerHTML = html;
+        } else {
+          // 原文が無い場合は正解語句のみ示す
+          feedbackExplanation.textContent = "正解: " + answers.join(" / ");
+        }
+      } else {
+        feedbackExplanationLabel.textContent = "解説";
+        feedbackExplanation.textContent = result.explanation || "（解説はありません）";
       }
-      feedbackExplanation.textContent = exp;
       updateChallengeUi(q);
     } else {
       feedbackEl.style.display = "none";

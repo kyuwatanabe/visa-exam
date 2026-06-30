@@ -1252,3 +1252,12 @@ code {
   color: #8a6d2f;
   margin-left: 4px;
 }
+
+/* 穴埋め採点後、原文中の正解語句のハイライト */
+.feedback-explanation .body mark {
+  background: #fff3b0;
+  color: inherit;
+  font-weight: 600;
+  padding: 0 2px;
+  border-radius: 2px;
+}

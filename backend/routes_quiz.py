@@ -258,6 +258,7 @@ def check_answer(req: CheckRequest):
         "type": graded["type"],
         "correct_choice": graded["correct_choice"],
         "correct_answers": graded["correct_answers"],
+        "source_sentence": graded.get("source_sentence"),
         "is_correct": graded["is_correct"],
         "explanation": q.get("explanation", ""),
     }

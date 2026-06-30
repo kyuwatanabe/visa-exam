@@ -86,14 +86,18 @@ def _build_user_prompt(
         lines.append(
             "# 出力JSON形式（このスキーマちょうど。questions は上の観点と同数）\n"
             '{ "questions": [ { "perspective_id": "観点id", '
-            '"question": "重要語句を ____ で伏せた文", '
+            '"source_sentence": "原本からそのまま抜き出した一文（語句を伏せない完全な文）", '
+            '"question": "上のsource_sentenceの重要語句を ____ で伏せた文", '
             '"blanks": [ { "variants": ["正解の表記", "表記揺れ1", "略称など"] } ], '
-            '"explanation": "解説", "source_pages": [21] } ] }\n'
-            "- 上級。文中の重要語句を1〜2箇所、半角アンダースコア4つ「____」で伏せた穴埋めにする。\n"
+            '"source_pages": [21] } ] }\n'
+            "- 上級。**必ず原本テキスト中に実在する一文をそのまま source_sentence に抜き出すこと。"
+            "言い換え・要約・新しい文の作文は禁止。**\n"
+            "- question は、その source_sentence の重要語句を1〜2箇所、半角アンダースコア4つ"
+            "「____」で伏せたものにする（伏せる以外は source_sentence と一字一句同じにする）。\n"
             "- 空欄の数だけ blanks を文中の出現順に並べる（1〜2個）。\n"
-            "- 各空欄の variants には、正解の表記揺れ候補（漢字／ひらがな／カタカナ、略称、別称、"
-            "英字略号など、解答として正答扱いすべき表記）を必ず複数併記する。\n"
-            "- choices や answer_index は出力しない。"
+            "- 各空欄の variants には、伏せた語句の正解表記と、その表記揺れ候補（漢字／ひらがな／"
+            "カタカナ、略称、別称、英字略号など、解答として正答扱いすべき表記）を併記する。\n"
+            "- explanation は出力しない。choices や answer_index も出力しない。"
         )
     else:  # choice
         lines.append(
@@ -209,12 +213,25 @@ def _validate_fill_in(i: int, q: dict) -> dict:
         if not clean:
             raise ValueError(f"questions[{i}].blanks[{j}].variants に有効な候補がない")
         norm_blanks.append({"variants": clean})
+
+    # 原文（空欄が埋まった完全文）。LLMが付けなければ question の ____ を
+    # 各空欄の代表表記で埋めて復元する。
+    source_sentence = q.get("source_sentence")
+    if isinstance(source_sentence, str) and source_sentence.strip():
+        source_sentence = source_sentence.strip()
+    else:
+        filled = question.strip()
+        for b in norm_blanks:
+            filled = filled.replace("____", b["variants"][0], 1)
+        source_sentence = filled
+
     return {
         "perspective_id": q.get("perspective_id", ""),
         "type": "fill_in",
         "question": question.strip(),
         "blanks": norm_blanks,
-        "explanation": (q.get("explanation") or "").strip(),
+        "source_sentence": source_sentence,
+        "explanation": "",
         "source_pages": q.get("source_pages", []),
     }
 
