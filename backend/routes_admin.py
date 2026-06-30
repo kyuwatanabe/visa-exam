@@ -345,19 +345,16 @@ async def delete_source_file(token: str, filename: str):
     """ソースファイルを削除。"""
     _check_token(token)
     
+    # セキュリティ: パストトラバーサル防止
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "不正なファイル名です")
+    
     try:
-        # backend/source/ 内のファイル削除を許可
         file_path = SOURCE_DIR / filename
-        
-        # セキュリティ: ファイルが SOURCE_DIR 配下にあるか確認
-        if not file_path.resolve().is_relative_to(SOURCE_DIR.resolve()):
-            raise HTTPException(400, "不正なファイルパスです")
         
         if file_path.exists():
             file_path.unlink()
         
         return {"ok": True, "deleted": filename}
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(400, f"削除に失敗しました: {str(e)}")
