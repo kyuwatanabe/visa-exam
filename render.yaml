@@ -22,7 +22,7 @@ services:
         value: "7200"
       - key: DATABASE_URL
         fromDatabase:
-          name: visa-quiz-db
+          name: visa-exam
           property: connectionString
     disks:
       - name: source-files
@@ -30,7 +30,7 @@ services:
         sizeGB: 5
 
 databases:
-  - name: visa-quiz-db
+  - name: visa-exam
     databaseName: visaquiz
     user: visaquiz
     region: singapore
