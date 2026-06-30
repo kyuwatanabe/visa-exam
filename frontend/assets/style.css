@@ -53,6 +53,7 @@ a { color: var(--primary); }
    読みやすさのため上限は 1100px でキャップする。 */
 .app-shell--quiz {
   max-width: min(1100px, 94vw);
+  padding-top: 16px;
 }
 
 .header {
@@ -268,7 +269,7 @@ input[type="text"]:focus {
 .progress-meta {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   margin-bottom: 8px;
 }
 
@@ -997,8 +998,8 @@ code {
   margin-bottom: 8px;
 }
 .btn-abort {
-  font-size: .85rem;
-  padding: 6px 14px;
+  font-size: .8rem;
+  padding: 4px 12px;
   background: #fff;
   color: var(--danger);
   border: 1px solid var(--danger);
@@ -1122,10 +1123,10 @@ code {
   resize: vertical;
 }
 /* 受験画面: 縦の余白を詰めてスクロールを減らす */
-.app-shell--quiz .header { margin-bottom: 16px; padding-bottom: 10px; }
+.app-shell--quiz .header { margin-bottom: 8px; padding-bottom: 6px; }
 .app-shell--quiz .card { padding: 18px; }
 .app-shell--quiz .question-text { margin-bottom: 12px; }
-.app-shell--quiz .quiz-header { margin-bottom: 8px; }
+.app-shell--quiz .quiz-header { margin-bottom: 4px; }
 .app-shell--quiz .progress-meta { margin-bottom: 4px; }
 .app-shell--quiz .choices { gap: 8px; }
 /* はい/いいえ（2択）は横並び */

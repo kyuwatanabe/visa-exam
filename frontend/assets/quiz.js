@@ -187,7 +187,7 @@
     const isChecked = result !== null;
 
     stepLabel.textContent = `${currentIdx + 1} / ${totalExpected}`;
-    categoryLabel.textContent = q.category ? q.category : "";
+    if (categoryLabel) categoryLabel.textContent = q.category ? q.category : "";
     progressBar.style.width = `${((currentIdx + 1) / totalExpected) * 100}%`;
     
     // 穴埋め問題の場合は、質問文中の ____ を「①②」のような番号付き空欄に置換

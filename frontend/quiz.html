@@ -19,10 +19,6 @@
     <div id="loading" class="loading">問題を準備中…</div>
 
     <main id="quiz-area" style="display:none;">
-      <div class="quiz-topbar">
-        <button class="btn btn-abort" id="abort-btn" type="button">検定を中止する</button>
-      </div>
-
       <div class="quiz-header">
         <div class="quiz-mode-label" id="quiz-mode-label"></div>
         <div class="quiz-unit-name" id="quiz-unit-name"></div>
@@ -30,7 +26,7 @@
 
       <div class="progress-meta">
         <span class="step" id="step-label">1 / 10</span>
-        <span class="category" id="category-label"></span>
+        <button class="btn btn-abort" id="abort-btn" type="button">検定を中止する</button>
       </div>
       <div class="progress"><div class="bar" id="progress-bar" style="width:10%"></div></div>
 
@@ -90,6 +86,5 @@
     // 受験中の画面。ヘッダーから移動・ログアウトする場合は、回答が記録されない旨を確認する。
     mountHeaderNav(null, { confirmLeave: "受験中です。移動するとここまでの回答は記録されません。移動しますか？" });
   </script>
-<footer style="display: flex; padding: 8px; font-size: 12px; border-top: 1px solid #eee;"></footer>
 </body>
 </html>
