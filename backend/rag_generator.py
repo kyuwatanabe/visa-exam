@@ -164,7 +164,10 @@ def _build_user_prompt(
             "false_text は一見もっともらしいが、数値・国・条件・要否などを変えて"
             "原本に照らすと誤りにした内容（もっともらしいが確実に誤り）。\n"
             "- true_reason / false_reason はそれぞれの判定理由を1文で簡潔に"
-            "（文頭に『正しい』『誤り』とは書かない）。原本に基づくこと。\n"
+            "（文頭に『正しい』『誤り』とは書かない）。\n"
+            "- **解説（reason）の文中に『原本』という語を使ってはならない"
+            "（『原本は』『原本では』『原本に照らして』等も禁止）。"
+            "手引きや資料への言及をせず、事実そのものを説明する。**\n"
             "- 上の割り当てにある『正しい記述にする／誤った記述にする』の指定は無視してよい"
             "（両方作れば、どちらを使うかはこちらで選ぶ）。\n"
             "## その他のルール\n"
@@ -312,6 +315,18 @@ def _validate_fill_in(i: int, q: dict) -> dict:
     }
 
 
+def _clean_reason(text: str) -> str:
+    """解説文から『原本』への言及を取り除く（表示に資料名を出さない）。"""
+    if not text:
+        return ""
+    s = text.strip()
+    # 文頭の「原本は」「原本では」「原本に照らして（は）」「原本によれば」等を除去
+    s = re.sub(r"^原本(に照らして|によれば|によると|では|は|に)?[、。]?\s*", "", s)
+    # 文中の「原本に照らして」「原本上」などの語も削る
+    s = re.sub(r"原本(に照らして|に照らすと|上|では|には|は|の記載では)?", "", s)
+    return s.strip()
+
+
 def _validate_multi(
     i: int,
     q: dict,
@@ -368,7 +383,7 @@ def _validate_multi(
                     f"questions[{i}].choice_items[{j}] に有効な記述文がない"
                 )
             choices.append(text)
-            reasons.append(reason)
+            reasons.append(_clean_reason(reason))
             actual_truth.append(used_true)
 
         # 実態の正誤で正解位置を確定。1〜2個の範囲に収まるよう調整する。
@@ -379,7 +394,7 @@ def _validate_multi(
                 tt = (it.get("true_text") or "").strip()
                 if tt:
                     choices[j] = tt
-                    reasons[j] = (it.get("true_reason") or "").strip()
+                    reasons[j] = _clean_reason(it.get("true_reason") or "")
                     actual_truth[j] = True
                     break
         elif len(correct_idx) > 2:
@@ -389,7 +404,7 @@ def _validate_multi(
                 ft = (items[j].get("false_text") or "").strip()
                 if ft:
                     choices[j] = ft
-                    reasons[j] = (items[j].get("false_reason") or "").strip()
+                    reasons[j] = _clean_reason(items[j].get("false_reason") or "")
                     actual_truth[j] = False
                 # 誤り版が無ければ正解のまま（稀）。keepに含める
                 elif j not in keep:
