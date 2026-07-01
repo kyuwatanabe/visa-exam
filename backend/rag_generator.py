@@ -145,12 +145,18 @@ def _build_user_prompt(
             f'"choice_explanations": [{"、".join([chr(34)+"選択肢"+str(i+1)+"が正しい/誤りである理由"+chr(34) for i in range(n_choices)])}], '
             '"source_pages": [21] } ] }\n'
             "## 最重要ルール（必ず守る）\n"
+            "- **設問文（question）は必ず「正しいものを1つ、または2つ選びなさい。」だけにする。"
+            "『B-1について』『〜の要件について』のような特定の話題を設問文に付けてはならない。**\n"
             f"- **各設問の {n_choices} 個の選択肢は、必ず『この単元の観点一覧』の"
             f"互いに異なる {n_choices} 個の観点から、1観点につき1つずつ作る。"
             "同じ観点を2つ以上使ってはならない。"
             "5つの選択肢が同じ話題（例: B-1 industrial worker）に偏るのは禁止。**\n"
-            "- 具体例: 選択肢1はVWPとの関係、選択肢2は対象者要件、選択肢3は滞在期間、"
-            "選択肢4は他ビザとの違い、選択肢5は例外規定、のように観点をばらす。\n"
+            "- 具体例（選択肢がすべて別観点になっている良い例）:\n"
+            "  選択肢1『日本人はVWPを使えるため90日以内の観光ならビザ不要である。』(観点:VWP)\n"
+            "  選択肢2『日本人のBビザは通常10年有効である。』(観点:有効期間)\n"
+            "  選択肢3『B-1は商用、B-2は観光目的のビザである。』(観点:B-1とB-2)\n"
+            "  選択肢4『米国法人の取締役会出席は商用として認められる。』(観点:取締役)\n"
+            "  選択肢5『B-1 in lieu of H-1BはH-1B該当業務ができるビザである。』(観点:in lieu)\n"
             "- 設問ごとに使う観点の組み合わせを変え、単元全体を広くカバーする。\n"
             "## その他のルール\n"
             f"- choices はちょうど {n_choices} 個。\n"
@@ -307,10 +313,12 @@ def _validate_fill_in(i: int, q: dict) -> dict:
     }
 
 
-def _validate_multi(i: int, q: dict, expected_choices: int) -> dict:
+def _validate_multi(i: int, q: dict, expected_choices: int, unit_name: str = "") -> dict:
     """複数選択（上級）の1問を検証し、内部形式に正規化する。
 
     choices ちょうど expected_choices 個、answer_indices は1〜2個の正答位置。
+    設問文は、特定の話題に偏らないよう単元名を用いた固定文に強制上書きする
+    （LLMがテーマ付きの設問文を返しても、それは使わない）。
     """
     question = q.get("question")
     choices = q.get("choices")
@@ -344,10 +352,17 @@ def _validate_multi(i: int, q: dict, expected_choices: int) -> dict:
     else:
         choice_explanations = [""] * expected_choices
 
+    # 設問文は単元名を用いた固定文に強制上書き（テーマ偏りを防ぐ）
+    fixed_question = (
+        f"「{unit_name}」について、正しいものを1つ、または2つ選びなさい。"
+        if unit_name
+        else "正しいものを1つ、または2つ選びなさい。"
+    )
+
     return {
         "perspective_id": q.get("perspective_id", ""),
         "type": "multi",
-        "question": question.strip(),
+        "question": fixed_question,
         "choices": [c.strip() for c in choices],
         "answer_indices": norm,  # 0始まり、1〜2個
         "choice_explanations": choice_explanations,
@@ -356,7 +371,7 @@ def _validate_multi(i: int, q: dict, expected_choices: int) -> dict:
     }
 
 
-def _parse_and_validate(raw: str, fmt: str, expected_choices: int) -> List[dict]:
+def _parse_and_validate(raw: str, fmt: str, expected_choices: int, unit_name: str = "") -> List[dict]:
     """LLM応答JSONをパースし、出題形式 fmt に応じて検証・正規化する。不正なら ValueError。"""
     data = json.loads(_strip_fences(raw))
     questions = data.get("questions")
@@ -371,7 +386,7 @@ def _parse_and_validate(raw: str, fmt: str, expected_choices: int) -> List[dict]
         elif fmt == "fill_in":
             out.append(_validate_fill_in(i, q))
         elif fmt == "multi":
-            out.append(_validate_multi(i, q, expected_choices))
+            out.append(_validate_multi(i, q, expected_choices, unit_name))
         else:
             out.append(_validate_choice(i, q, expected_choices))
     return out
@@ -471,7 +486,7 @@ def generate_questions(
         attempts_used = attempt + 1
         try:
             raw, usage = call(system_blocks, user_prompt)
-            parsed = _parse_and_validate(raw, fmt, n_choices)
+            parsed = _parse_and_validate(raw, fmt, n_choices, meta.get("unit_name", unit_id))
             if len(parsed) < want:
                 # 要求した観点数に満たない生成は無音で通さずリトライ対象にする
                 raise ValueError(
