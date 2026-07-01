@@ -307,10 +307,11 @@
       const isCorrect = correct.includes(i);
       const userPicked = sel.includes(i);
       if (isChecked) {
-        // 正解の記述は常に緑。誤りの記述は「自分が選んだ場合のみ」赤（選択ミス）。
-        // 誤りを選ばなかった場合は色を付けない。
-        if (isCorrect) cls += " correct";
-        else if (userPicked) cls += " wrong";
+        // 選択ミス（誤りの記述を選んでしまった）だけ赤。それ以外は緑。
+        //  - 正解の記述（選んでも選ばなくても）→ 緑
+        //  - 誤りの記述を選ばなかった（正しく避けた）→ 緑
+        const mistake = !isCorrect && userPicked;
+        cls += mistake ? " wrong" : " correct";
       } else if (userPicked) {
         cls += " selected";
       }
