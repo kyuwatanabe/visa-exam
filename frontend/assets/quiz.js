@@ -307,10 +307,10 @@
       const isCorrect = correct.includes(i);
       const userPicked = sel.includes(i);
       if (isChecked) {
-        // 選択ミス（誤りの記述を選んでしまった）だけ赤。それ以外は緑。
-        //  - 正解の記述（選んでも選ばなくても）→ 緑
-        //  - 誤りの記述を選ばなかった（正しく避けた）→ 緑
-        const mistake = !isCorrect && userPicked;
+        // 「自分の対応」が正しかったかで色分けする。
+        //  緑（正しく対応）: 正解を選んだ / 誤りを選ばなかった
+        //  赤（対応を誤った）: 誤りを選んだ / 正解を選び逃した
+        const mistake = (userPicked && !isCorrect) || (!userPicked && isCorrect);
         cls += mistake ? " wrong" : " correct";
       } else if (userPicked) {
         cls += " selected";
@@ -345,8 +345,8 @@
       else if (userPicked && !isCorrect) youTag = "<span class='mx-you mx-you-ng'>あなたの選択：不正解</span>";
       else if (!userPicked && isCorrect) youTag = "<span class='mx-you mx-you-miss'>選べていない正解</span>";
 
-      // 解説の要否: 「正しいと思って選び、実際に正解だった」場合のみ不要
-      const suppress = userPicked && isCorrect;
+      // 解説は「誤りの記述」にだけ表示（なぜ誤りか）。正しい記述には出さない。
+      const suppress = isCorrect;
       const reason = (!suppress && expl[i]) ? `<div class="mx-reason">${escapeHtml(expl[i])}</div>` : "";
 
       div.innerHTML = `
