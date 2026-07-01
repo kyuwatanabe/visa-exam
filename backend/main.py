@@ -35,6 +35,15 @@ app.add_middleware(
 rag_perspectives.load()   # 観点メタ（perspectives/*.json）をメモリへ
 db.init_db()              # SQLite スキーマ初期化
 
+# 事前生成プールの補充ワーカーを起動（バックグラウンドで各単元の在庫を維持）。
+# 生成の遅さ・失敗はここに隔離され、検定開始はプールからの即時払い出しになる。
+try:
+    from backend import rag_pool
+    rag_pool.start_worker()
+except Exception as _pool_err:  # noqa: BLE001
+    import logging
+    logging.getLogger("uvicorn.error").warning("pool worker not started: %s", _pool_err)
+
 # 採点の派生(derive)方式への移行（冪等）。過去データの素の採点を整え、
 # score/total と単元進捗を再計算する。データ規模が小さいため起動毎に走らせても安く、
 # 何回流しても同じ結果になる。移行でこけてもアプリ起動は止めない（新規分の計算は正しい）。

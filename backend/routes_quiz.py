@@ -17,7 +17,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend import auth, db
-from backend import rag_generator, rag_perspectives, rag_session_store, rag_source
+from backend import rag_generator, rag_perspectives, rag_pool, rag_session_store, rag_source
 from backend.config import (
     ALLOWED_LEVELS,
     CHALLENGE_USER_STATUS_LABELS,
@@ -141,6 +141,31 @@ def rag_quiz_start(req: RagStartRequest, user: dict = Depends(auth.get_current_u
     )
     if not perspectives:
         raise HTTPException(502, f"観点が0件です: level={req.level}, unit={req.unit}")
+
+    # まず事前生成プールから払い出す（あれば即座にフルセットで開始＝待ち時間ゼロ）。
+    pooled = rag_pool.claim_set(req.level, req.unit)
+    if pooled and pooled.get("questions"):
+        pq = pooled["questions"]
+        session = rag_session_store.create_session(
+            username=user["email"],
+            level=req.level,
+            unit_id=req.unit,
+            questions=pq,
+            metrics=pooled.get("meta", {}),
+            pending_perspectives=[],  # 全問揃っているのでテイル無し
+        )
+        return {
+            "level": req.level,
+            "unit": req.unit,
+            "session_id": session["session_id"],
+            "questions": session["questions"],
+            "total_questions": len(pq),
+            "head_count": len(pq),
+            "pending_count": 0,
+            "gen_metrics": pooled.get("meta", {}),
+        }
+
+    # プールが空: 従来のその場生成（ヘッド即返し＋テイル分割）にフォールバック。
     head = perspectives[:RAG_HEAD_COUNT]
     tail = perspectives[RAG_HEAD_COUNT:]
 
@@ -231,6 +256,12 @@ def rag_quiz_continue(req: RagContinueRequest):
         if "ANTHROPIC_API_KEY" in msg:
             raise HTTPException(503, msg)
         raise HTTPException(502, f"RAG出題（残り）の生成に失敗しました: {msg}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        # 予期しない例外でも 500 のまま素通りさせず、pending を戻して 502 で返す。
+        rag_session_store.restore_pending(req.session_id, pending_raw)
+        raise HTTPException(502, f"RAG出題（残り）の生成に失敗しました: {e}")
 
     merged = rag_generator.merge_metrics(session.get("meta", {}), gen["metrics"])
     public = rag_session_store.append_tail_questions(session, gen["questions"], merged)

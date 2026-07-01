@@ -160,6 +160,26 @@ def _init_db_postgres() -> None:
         )
         cur.execute("ALTER TABLE quiz_sessions ADD COLUMN IF NOT EXISTS pending TEXT")
 
+        # 事前生成プール: 級×単元ごとに、完成した10問セット（正答・解説込み）を
+        # あらかじめ作り置きしておく。検定開始時はここから即座に払い出す（待ち時間ゼロ）。
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS quiz_pool (
+                id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                level       TEXT NOT NULL,
+                unit_id     TEXT NOT NULL,
+                questions   TEXT NOT NULL,
+                meta        TEXT,
+                created_at  TEXT NOT NULL,
+                claimed     INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_quiz_pool_lookup "
+            "ON quiz_pool(level, unit_id, claimed)"
+        )
+
         # 認証: ユーザーアカウント（メール＋パスワード）。
         cur.execute(
             """
@@ -310,6 +330,25 @@ def _init_db_sqlite() -> None:
         }
         if "pending" not in existing_cols:
             cur.execute("ALTER TABLE quiz_sessions ADD COLUMN pending TEXT")
+
+        # 事前生成プール（SQLite版）
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS quiz_pool (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                level       TEXT NOT NULL,
+                unit_id     TEXT NOT NULL,
+                questions   TEXT NOT NULL,
+                meta        TEXT,
+                created_at  TEXT NOT NULL,
+                claimed     INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_quiz_pool_lookup "
+            "ON quiz_pool(level, unit_id, claimed)"
+        )
 
         # 認証: ユーザーアカウント（メール＋パスワード）。
         cur.execute(
@@ -681,6 +720,96 @@ def restore_quiz_session_pending(session_id: str, pending_raw: str) -> None:
             """,
             (pending_raw, session_id),
         )
+
+
+# --- 事前生成プール ------------------------------------------------------------
+
+def pool_add(level: str, unit_id: str, questions_json: str, meta_json: str) -> None:
+    """完成した問題セット（10問・正答/解説込み）をプールに追加する。"""
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO quiz_pool (level, unit_id, questions, meta, created_at, claimed)
+            VALUES (?, ?, ?, ?, ?, 0)
+            """,
+            (level, unit_id, questions_json, meta_json, _now_iso()),
+        )
+
+
+def pool_count(level: str, unit_id: str) -> int:
+    """指定の級×単元で、未払い出し（claimed=0）のセット数を返す。"""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM quiz_pool "
+            "WHERE level = ? AND unit_id = ? AND claimed = 0",
+            (level, unit_id),
+        ).fetchone()
+        return int(dict(row)["n"]) if row else 0
+
+
+def pool_claim(level: str, unit_id: str):
+    """未払い出しのセットを1つ原子的に取得する。取れれば {questions, meta} を返す。
+
+    同時に複数リクエストが来ても、1セットは1人にしか払い出されない。
+    無ければ None。
+    """
+    with get_conn() as conn:
+        if IS_POSTGRES:
+            # 行ロックで1件だけ確保して claimed=1 にし、その内容を返す
+            row = conn.execute(
+                """
+                UPDATE quiz_pool
+                   SET claimed = 1
+                 WHERE id = (
+                     SELECT id FROM quiz_pool
+                      WHERE level = %s AND unit_id = %s AND claimed = 0
+                      ORDER BY id
+                      FOR UPDATE SKIP LOCKED
+                      LIMIT 1
+                 )
+                RETURNING questions, meta
+                """.replace("%s", "%s"),
+                (level, unit_id),
+            ).fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            return {
+                "questions": json.loads(d["questions"]),
+                "meta": json.loads(d["meta"]) if d.get("meta") else {},
+            }
+        else:
+            # SQLite: SELECT で候補を1件取り、claimed=0 の条件付き UPDATE で確保
+            for _ in range(5):
+                row = conn.execute(
+                    "SELECT id, questions, meta FROM quiz_pool "
+                    "WHERE level = ? AND unit_id = ? AND claimed = 0 "
+                    "ORDER BY id LIMIT 1",
+                    (level, unit_id),
+                ).fetchone()
+                if row is None:
+                    return None
+                d = dict(row)
+                cur = conn.execute(
+                    "UPDATE quiz_pool SET claimed = 1 WHERE id = ? AND claimed = 0",
+                    (d["id"],),
+                )
+                if cur.rowcount == 1:
+                    return {
+                        "questions": json.loads(d["questions"]),
+                        "meta": json.loads(d["meta"]) if d.get("meta") else {},
+                    }
+            return None
+
+
+def pool_cleanup_claimed(older_than_iso: str) -> int:
+    """払い出し済み（claimed=1）で古いセットを掃除する。削除件数を返す。"""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "DELETE FROM quiz_pool WHERE claimed = 1 AND created_at <= ?",
+            (older_than_iso,),
+        )
+        return cur.rowcount or 0
 
 
 def cleanup_expired_sessions() -> int:

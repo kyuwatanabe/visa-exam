@@ -55,6 +55,13 @@ def available_cells() -> List[dict]:
     return out
 
 
+def list_units(level: str) -> List[str]:
+    """指定した級で観点メタが存在する unit_id 一覧を返す。"""
+    return sorted(
+        u for (lv, u) in _PERSPECTIVES.keys() if lv == level
+    )
+
+
 def sample_perspectives(
     level: str, unit_id: str, n: int, seed: Optional[int] = None
 ) -> tuple[List[dict], int]:
