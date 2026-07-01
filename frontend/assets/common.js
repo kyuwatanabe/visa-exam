@@ -124,19 +124,27 @@ const CHALLENGE_STATUS_LABEL = {
   rejected: "却下",
 };
 
-// バージョン表示。#app-title があればその右に、無ければ画面上部右に出す。
+// アプリのバージョン（唯一の定義箇所）。管理画面・受験画面はここを参照する。
+const APP_VERSION = "v1.7.3";
+
+// バージョン表示。#app-version-slot があればそこへ、#app-title があればその右、
+// どちらも無ければ画面上部右に出す。
 function initVersionDisplay() {
-  const version = "v1.7.2";
+  // 管理画面など、専用スロットがあればそこに入れて終わり
+  const slot = document.getElementById("app-version-slot");
+  if (slot) {
+    slot.textContent = APP_VERSION;
+  }
   if (document.getElementById("app-version")) return;  // 二重表示防止
   const versionEl = document.createElement("span");
   versionEl.id = "app-version";
-  versionEl.textContent = version;
+  versionEl.textContent = APP_VERSION;
   const title = document.getElementById("app-title");
   if (title) {
     versionEl.style.cssText =
       "color: #888; font-size: 13px; font-weight: 600; margin-left: 10px;";
     title.appendChild(versionEl);
-  } else {
+  } else if (!slot) {
     versionEl.style.cssText =
       "display:block; text-align: right; color: #555; font-size: 13px; font-weight: 600; padding: 6px 16px;";
     document.body.insertBefore(versionEl, document.body.firstChild);
