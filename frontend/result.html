@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - 結果</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.11.1">
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.2">
 </head>
 <body>
   <div class="app-shell">
@@ -47,12 +47,12 @@
       <div class="btn-row">
         <a class="btn" id="retry-link" href="#">もう一度受ける</a>
         <a class="btn" id="next-unit-link" href="#" style="display:none;">次の単元へ →</a>
-        <a class="btn btn-secondary" id="units-link" href="#">単元一覧へ</a>
+        <a class="btn btn-secondary" id="units-link" href="#">問題選択へ</a>
       </div>
     </main>
   </div>
 
-  <script src="/assets/common.js?v=1.11.1"></script>
+  <script src="/assets/common.js?v=1.11.2"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const level = params.get("level") || "beginner";
@@ -80,7 +80,7 @@
       mountHeaderNav();
       const raw = sessionStorage.getItem("visa_quiz_last_result");
       if (!raw) {
-        loadingEl.innerHTML = '結果データが見つかりません。<br><a href="/home.html">難易度選択へ戻る</a>';
+        loadingEl.innerHTML = '結果データが見つかりません。<br><a href="/home.html">ホームへ戻る</a>';
         return;
       }
       const result = JSON.parse(raw);
@@ -97,8 +97,7 @@
       pctEl.textContent = `${pct}%`;
 
 
-      const unitsParams = new URLSearchParams({ level: lvl });
-      unitsLink.href = `/units.html?${unitsParams.toString()}`;
+      unitsLink.href = `/select.html`;
 
       if (result.unit) {
         renderUnitStreak(result);

@@ -1,99 +1,277 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex,nofollow">
-  <title>ビザ検定 - 難易度選択</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.11.1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ホーム - ビザ検定</title>
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.2">
 </head>
 <body>
   <div class="app-shell">
     <header class="header">
       <div class="header-main">
         <h1>ビザ検定</h1>
-        <p class="subtitle" id="user-label"></p>
+        <p class="subtitle">ホーム</p>
       </div>
     </header>
 
     <div id="loading" class="loading">読み込み中…</div>
 
-    <div id="content" style="display:none;">
-      <!-- 難易度選択 -->
+    <div id="content" style="display: none;">
+      <!-- プロフィール（常時表示） -->
       <section class="card">
-        <h2>難易度選択</h2>
-        <div class="level-grid" id="level-grid">
-          <div class="loading">読み込み中…</div>
-        </div>
+        <div id="profile-name" style="font-size: 18px; font-weight: 600;"></div>
+        <div id="profile-email" class="muted"></div>
+      </section>
+
+      <!-- タブ -->
+      <div class="tabs" id="tabs">
+        <button type="button" class="tab active" data-tab="progress">単元別進捗</button>
+        <button type="button" class="tab" data-tab="history">受験履歴</button>
+        <button type="button" class="tab" data-tab="challenges">チャレンジ</button>
+        <button type="button" class="tab" data-tab="settings">設定</button>
+      </div>
+
+      <!-- 単元別進捗 -->
+      <section class="card tab-panel" id="panel-progress">
+        <h2>単元別進捗</h2>
+        <div id="progress-area"><div class="loading">読み込み中…</div></div>
+      </section>
+
+      <!-- 受験履歴 -->
+      <section class="card tab-panel" id="panel-history" hidden>
+        <h2>受験履歴</h2>
+        <div id="history-area"><div class="loading">読み込み中…</div></div>
+      </section>
+
+      <!-- チャレンジ -->
+      <section class="card tab-panel" id="panel-challenges" hidden>
+        <h2>チャレンジ</h2>
+        <div id="challenges-area"><div class="loading">読み込み中…</div></div>
+      </section>
+
+      <!-- 設定 -->
+      <section class="card tab-panel" id="panel-settings" hidden>
+        <h2>設定</h2>
+
+        <h3 style="margin: 4px 0 8px;">メールアドレスの変更</h3>
+        <label for="email-new">新しいメールアドレス</label>
+        <input type="email" id="email-new" maxlength="254" autocomplete="email">
+        <label for="email-pw" style="margin-top: 8px; display: block;">現在のパスワード（確認）</label>
+        <input type="password" id="email-pw" maxlength="128" autocomplete="current-password">
+        <p class="muted" id="email-msg" style="margin-top: 8px;" hidden></p>
+        <button type="button" class="btn" id="email-submit" style="margin-top: 12px;">メールアドレスを変更</button>
+
+        <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border);">
+
+        <h3 style="margin: 4px 0 8px;">パスワードの再設定</h3>
+        <label for="pw-current">現在のパスワード</label>
+        <input type="password" id="pw-current" maxlength="128" autocomplete="current-password">
+        <label for="pw-new" style="margin-top: 8px; display: block;">新しいパスワード（8文字以上）</label>
+        <input type="password" id="pw-new" maxlength="128" autocomplete="new-password">
+        <p class="muted" id="pw-msg" style="margin-top: 8px;" hidden></p>
+        <button type="button" class="btn" id="pw-submit" style="margin-top: 12px;">パスワードを変更</button>
       </section>
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.11.1"></script>
+  <script src="/assets/common.js?v=1.11.2"></script>
   <script>
-    const levelGrid = document.getElementById("level-grid");
-    const userLabel = document.getElementById("user-label");
+    // LEVELS / requireLogin / mountHeaderNav / levelLabel / fmtDate / pillClass は common.js
 
-    // LEVELS / LEVEL_NAMES / requireLogin / mountHeaderNav は common.js に共通化
+    let challengeItems = [];
+    let openUnitKeys = new Set();    // 未処理チャレンジのある "level:unit_id"
+    let openAttemptIds = new Set();  // 未処理チャレンジのある受験ID
 
-    let levels = [];
-
-    // 未ログインはログイン画面（トップ）へ。ログイン中なら難易度選択を表示する。
     async function init() {
       const me = await requireLogin();
       if (!me) return;
       mountHeaderNav("home");
-      userLabel.textContent = `受験者：${me.display_name}`;
+      document.getElementById("profile-name").textContent = `${me.display_name} さん`;
+      document.getElementById("profile-email").textContent = me.email;
       document.getElementById("loading").style.display = "none";
       document.getElementById("content").style.display = "block";
-      loadLevels();
+      setupTabs();
+      await loadChallengesData();   // 暫定判定の元データを先に取る
+      loadProgress();
+      loadHistory();
+      renderChallenges();
     }
 
-    // 難易度カードを押したら単元選択画面へ。
-    function goToUnits(levelId) {
-      const params = new URLSearchParams({ level: levelId });
-      location.href = `/units.html?${params.toString()}`;
+    // --- タブ切替 ---
+    function setupTabs() {
+      const tabs = document.querySelectorAll("#tabs .tab");
+      tabs.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          tabs.forEach((b) => b.classList.toggle("active", b === btn));
+          document.querySelectorAll(".tab-panel").forEach((p) => {
+            p.hidden = p.id !== `panel-${btn.dataset.tab}`;
+          });
+        });
+      });
     }
 
-    async function loadLevels() {
+    // --- チャレンジ元データ（暫定判定に使う集合も作る） ---
+    async function loadChallengesData() {
       try {
-        // 観点メタのあるレベルから難易度を導出する（出題対象=ビザ種別単元のみ）
-        const res = await fetch("/api/rag/cells");
+        const res = await fetch("/api/my/challenges");
         const data = await res.json();
-        const counts = {};
-        for (const cell of (data.cells || [])) {
-          counts[cell.level] = (counts[cell.level] || 0) + 1;
-        }
-        levels = LEVELS.map((id) => ({
-          id,
-          name: LEVEL_NAMES[id] || id,
-          available: (counts[id] || 0) > 0,
-          unit_count: counts[id] || 0,
-        }));
-        renderLevels();
+        challengeItems = data.challenges || [];
       } catch (e) {
-        levelGrid.innerHTML = '<div class="empty">難易度情報の取得に失敗しました</div>';
+        challengeItems = [];
       }
+      const open = challengeItems.filter((c) => c.status === "open");
+      openUnitKeys = new Set(open.map((c) => `${c.level}:${c.unit_id}`));
+      openAttemptIds = new Set(open.filter((c) => c.attempt_id != null).map((c) => c.attempt_id));
     }
 
-    function renderLevels() {
-      levelGrid.innerHTML = "";
-      for (const lv of levels) {
-        const div = document.createElement("div");
-        div.className = "level-card" + (lv.available ? "" : " disabled");
-        div.dataset.id = lv.id;
-
-        const meta = lv.available
-          ? `<div class="meta">${lv.unit_count}単元</div>`
-          : `<div class="coming-soon">COMING SOON</div>`;
-        div.innerHTML = `<h3>${lv.name}</h3>${meta}`;
-
-        if (lv.available) {
-          div.addEventListener("click", () => goToUnits(lv.id));
+    // --- 単元別進捗（未処理チャレンジのある単元は薄い黄色） ---
+    async function loadProgress() {
+      const area = document.getElementById("progress-area");
+      try {
+        const sections = [];
+        for (const level of LEVELS) {
+          const res = await fetch(`/api/rag/units?level=${level}`);
+          if (!res.ok) continue;
+          const data = await res.json();
+          const rows = (data.units || []).map((u) => {
+            const status = u.cleared
+              ? '<span class="prog-chip prog-chip--cleared">クリア</span>'
+              : `<span class="prog-chip">${u.perfect_count}/${u.required_streak}</span>`;
+            const last = u.last_taken_at ? fmtDate(u.last_taken_at) : "−";
+            const pending = openUnitKeys.has(`${level}:${u.id}`);
+            const cls = pending ? ' class="row-pending"' : "";
+            const mark = pending ? ' <span class="pending-tag">確認中</span>' : "";
+            return `<tr${cls}><td>${escapeHtml(u.name)}${mark}</td><td>${status}</td><td>${last}</td></tr>`;
+          }).join("");
+          sections.push(`
+            <h3 style="margin: 12px 0 6px;">${levelLabel(level)}</h3>
+            <table class="data">
+              <thead><tr><th>単元</th><th>進捗</th><th>最終受験</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>`);
         }
-        levelGrid.appendChild(div);
+        area.innerHTML = sections.join("") || '<div class="empty">進捗はまだありません</div>';
+      } catch (e) {
+        area.innerHTML = '<div class="empty">進捗の取得に失敗しました</div>';
       }
     }
+
+    // --- 受験履歴（未処理チャレンジのある回は「暫定」） ---
+    async function loadHistory() {
+      const area = document.getElementById("history-area");
+      try {
+        const res = await fetch("/api/history");
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const attempts = data.attempts || [];
+        if (attempts.length === 0) {
+          area.innerHTML = '<div class="empty">受験履歴はまだありません</div>';
+          return;
+        }
+        const rows = attempts.map((a) => {
+          const pct = a.total ? Math.round((a.score * 100) / a.total) : 0;
+          const pending = openAttemptIds.has(a.id);
+          const cls = pending ? ' class="row-pending"' : "";
+          const mark = pending ? ' <span class="pending-tag">暫定</span>' : "";
+          return `<tr${cls}>
+            <td>${fmtDate(a.taken_at)}${mark}</td>
+            <td>${levelLabel(a.level)}</td>
+            <td><span class="score-pill ${pillClass(pct)}">${a.score} / ${a.total}</span></td>
+          </tr>`;
+        }).join("");
+        area.innerHTML = `
+          <table class="data">
+            <thead><tr><th>受験日時</th><th>レベル</th><th>得点</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      } catch (e) {
+        area.innerHTML = '<div class="empty">履歴の取得に失敗しました</div>';
+      }
+    }
+
+    // --- チャレンジ一覧（状態は容認／却下／確認中の利用者向け表示） ---
+    function userStatusClass(st) {
+      if (st === "rejected") return "rejected";
+      if (st === "open") return "open";
+      return "accepted";  // accepted / closed はどちらも「容認」
+    }
+    function renderChallenges() {
+      const area = document.getElementById("challenges-area");
+      if (challengeItems.length === 0) {
+        area.innerHTML = '<div class="empty">チャレンジはまだありません</div>';
+        return;
+      }
+      const rows = challengeItems.map((ch) => {
+        const status = `<span class="ch-status ch-status--${userStatusClass(ch.status)}">${escapeHtml(ch.status_label || ch.status)}</span>`;
+        const msg = ch.admin_message
+          ? `<div class="muted" style="margin-top:4px;">管理者より：${escapeHtml(ch.admin_message)}</div>`
+          : "";
+        const reason = ch.reason
+          ? `<div class="muted" style="font-size:11px;">理由：${escapeHtml(ch.reason)}</div>`
+          : "";
+        return `<tr>
+          <td>${fmtDate(ch.created_at)}</td>
+          <td>${escapeHtml(ch.question || "")}${reason}</td>
+          <td>${status}${msg}</td>
+        </tr>`;
+      }).join("");
+      area.innerHTML = `
+        <table class="data">
+          <thead><tr><th>申し立て日時</th><th>設問 / 理由</th><th>状態 / 返信</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    // --- メールアドレス変更 ---
+    document.getElementById("email-submit").addEventListener("click", async () => {
+      const msg = document.getElementById("email-msg");
+      msg.hidden = true;
+      try {
+        const res = await fetch("/api/auth/email", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            new_email: document.getElementById("email-new").value.trim(),
+            current_password: document.getElementById("email-pw").value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "変更に失敗しました");
+        document.getElementById("profile-email").textContent = data.email;
+        document.getElementById("email-new").value = "";
+        document.getElementById("email-pw").value = "";
+        msg.textContent = "メールアドレスを変更しました。";
+        msg.style.color = "var(--success)";
+        msg.hidden = false;
+      } catch (e) {
+        msg.textContent = e.message;
+        msg.style.color = "var(--danger)";
+        msg.hidden = false;
+      }
+    });
+
+    // --- パスワード変更 ---
+    document.getElementById("pw-submit").addEventListener("click", async () => {
+      const msg = document.getElementById("pw-msg");
+      msg.hidden = true;
+      try {
+        const res = await fetch("/api/auth/password", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            current_password: document.getElementById("pw-current").value,
+            new_password: document.getElementById("pw-new").value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "変更に失敗しました");
+        alert("パスワードを変更しました。新しいパスワードで再ログインしてください。");
+        location.href = "/";
+      } catch (e) {
+        msg.textContent = e.message;
+        msg.style.color = "var(--danger)";
+        msg.hidden = false;
+      }
+    });
 
     init();
   </script>

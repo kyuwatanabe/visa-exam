@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - ログイン</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.11.1">
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.2">
 </head>
 <body>
   <div class="app-shell">
@@ -52,7 +52,7 @@
   </div>
 
   <script>
-    const HOME_URL = "/home.html";   // ログイン後の遷移先（難易度選択画面）
+    const HOME_URL = "/home.html";   // ログイン後の遷移先（ホーム）
     const authError = document.getElementById("auth-error");
 
     let authMode = "login"; // "login" | "register"
@@ -89,7 +89,7 @@
         }
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "失敗しました");
-        location.href = HOME_URL;   // 難易度選択画面へ
+        location.href = HOME_URL;   // ホームへ
       } catch (e) {
         authError.textContent = e.message;
         authError.hidden = false;

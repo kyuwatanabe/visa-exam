@@ -66,7 +66,7 @@ async function logoutAndRedirect() {
 
 // ログイン後画面の共通ヘッダーナビ。各ページのヘッダー右側へ
 // ホーム / マイページ / ログアウト を差し込む。
-//   active : "home" / "mypage" を渡すと現在ページのボタンを強調する。
+//   active : "home" / "select" を渡すと現在ページのボタンを強調する。
 //   opts.confirmLeave : 文字列を渡すと、移動・ログアウト前に confirm を挟む
 //                       （受験中の誤離脱防止用）。
 // ヘッダー（.header）が無いページでは何もしない。
@@ -80,7 +80,7 @@ function mountHeaderNav(active, opts) {
 
   const links = [
     { key: "home", label: "ホーム", href: "/home.html" },
-    { key: "mypage", label: "マイページ", href: "/mypage.html" },
+    { key: "select", label: "問題選択", href: "/select.html" },
   ];
   for (const l of links) {
     const a = document.createElement("a");
@@ -125,7 +125,7 @@ const CHALLENGE_STATUS_LABEL = {
 };
 
 // アプリのバージョン（唯一の定義箇所）。管理画面・受験画面はここを参照する。
-const APP_VERSION = "v1.11.1";
+const APP_VERSION = "v1.11.2";
 
 // バージョン表示。#app-version-slot があればそこへ、#app-title があればその右、
 // どちらも無ければ画面上部右に出す。

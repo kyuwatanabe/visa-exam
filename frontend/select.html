@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>問題選択 - ビザ検定</title>
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.2">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="header">
+      <div class="header-main">
+        <h1>ビザ検定</h1>
+        <p class="subtitle">問題選択</p>
+      </div>
+    </header>
+
+    <div id="loading" class="loading">読み込み中…</div>
+
+    <div id="content" style="display:none;">
+      <!-- 難易度 -->
+      <section class="card">
+        <h2>難易度を選ぶ</h2>
+        <div class="sel-grid" id="level-list"></div>
+      </section>
+
+      <!-- 単元 -->
+      <section class="card">
+        <h2>単元を選ぶ</h2>
+        <div id="unit-list"><div class="muted">難易度を選ぶと単元が表示されます</div></div>
+      </section>
+
+      <!-- 開始 -->
+      <section class="card" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <button type="button" id="start-btn" class="btn btn-primary" disabled
+                style="padding:10px 24px; font-size:15px;">検定を開始</button>
+        <span id="start-hint" class="muted">難易度と単元をそれぞれ1つ選んでください</span>
+      </section>
+    </div>
+
+    <div id="error-area" class="card" style="display:none;">
+      <h2>エラー</h2>
+      <p id="error-message"></p>
+    </div>
+  </div>
+
+  <script src="/assets/common.js?v=1.11.2"></script>
+  <script>
+    // LEVELS / requireLogin / mountHeaderNav / levelLabel / fmtDate は common.js
+
+    const loadingEl = document.getElementById("loading");
+    const contentEl = document.getElementById("content");
+    const levelListEl = document.getElementById("level-list");
+    const unitListEl = document.getElementById("unit-list");
+    const startBtn = document.getElementById("start-btn");
+    const startHint = document.getElementById("start-hint");
+
+    let availableLevels = [];   // 観点メタのある難易度
+    let selectedLevel = null;
+    let selectedUnit = null;
+    let unitsCache = {};        // level -> units[]
+
+    async function init() {
+      const me = await requireLogin();
+      if (!me) return;
+      mountHeaderNav("select");
+      try {
+        await loadLevels();
+        renderLevels();
+        loadingEl.style.display = "none";
+        contentEl.style.display = "block";
+      } catch (e) {
+        showError(e.message || "読み込みに失敗しました");
+      }
+    }
+
+    function showError(msg) {
+      loadingEl.style.display = "none";
+      document.getElementById("error-area").style.display = "block";
+      document.getElementById("error-message").textContent = msg;
+    }
+
+    // 観点メタのある難易度を導出する（cells から）。
+    async function loadLevels() {
+      const res = await fetch("/api/rag/cells");
+      if (res.status === 401) { location.href = "/"; return; }
+      if (!res.ok) throw new Error("難易度の取得に失敗しました");
+      const data = await res.json();
+      const set = new Set((data.cells || []).map((c) => c.level));
+      availableLevels = LEVELS.filter((l) => set.has(l));
+      if (availableLevels.length === 0) availableLevels = LEVELS.slice();
+    }
+
+    function renderLevels() {
+      levelListEl.innerHTML = availableLevels.map((l) => `
+        <button type="button" class="sel-card" data-level="${l}">
+          ${levelLabel(l)}
+        </button>`).join("");
+      levelListEl.querySelectorAll(".sel-card").forEach((btn) => {
+        btn.addEventListener("click", () => selectLevel(btn.dataset.level));
+      });
+    }
+
+    async function selectLevel(level) {
+      selectedLevel = level;
+      selectedUnit = null;
+      levelListEl.querySelectorAll(".sel-card").forEach((b) => {
+        b.classList.toggle("is-selected", b.dataset.level === level);
+      });
+      updateStart();
+      await loadUnits(level);
+    }
+
+    async function loadUnits(level) {
+      unitListEl.innerHTML = '<div class="loading">読み込み中…</div>';
+      try {
+        if (!unitsCache[level]) {
+          const res = await fetch(`/api/rag/units?level=${encodeURIComponent(level)}`);
+          if (res.status === 401) { location.href = "/"; return; }
+          if (!res.ok) throw new Error();
+          const data = await res.json();
+          unitsCache[level] = data.units || [];
+        }
+        renderUnits(unitsCache[level]);
+      } catch (e) {
+        unitListEl.innerHTML = '<div class="empty">単元の取得に失敗しました</div>';
+      }
+    }
+
+    function renderUnits(units) {
+      if (!units.length) {
+        unitListEl.innerHTML = '<div class="empty">この難易度には単元がありません</div>';
+        return;
+      }
+      unitListEl.innerHTML = `<div class="sel-grid">` + units.map((u) => {
+        const status = u.cleared
+          ? '<span class="prog-chip prog-chip--cleared">クリア</span>'
+          : `<span class="prog-chip">${u.perfect_count}/${u.required_streak}</span>`;
+        const disabled = u.playable ? "" : "disabled";
+        return `
+          <button type="button" class="sel-card ${disabled ? "is-disabled" : ""}" data-unit="${u.id}" ${disabled}>
+            <span class="sel-card-title">${escapeHtml(u.name)}</span>
+            <span class="sel-card-sub">${status}</span>
+          </button>`;
+      }).join("") + `</div>`;
+      unitListEl.querySelectorAll(".sel-card").forEach((btn) => {
+        if (btn.hasAttribute("disabled")) return;
+        btn.addEventListener("click", () => selectUnit(btn.dataset.unit));
+      });
+    }
+
+    function selectUnit(unitId) {
+      selectedUnit = unitId;
+      unitListEl.querySelectorAll(".sel-card").forEach((b) => {
+        b.classList.toggle("is-selected", b.dataset.unit === unitId);
+      });
+      updateStart();
+    }
+
+    function updateStart() {
+      const ready = selectedLevel && selectedUnit;
+      startBtn.disabled = !ready;
+      startHint.textContent = ready
+        ? `${levelLabel(selectedLevel)} / ${unitName(selectedUnit)} を開始できます`
+        : "難易度と単元をそれぞれ1つ選んでください";
+    }
+
+    function unitName(unitId) {
+      const list = unitsCache[selectedLevel] || [];
+      const u = list.find((x) => x.id === unitId);
+      return u ? u.name : unitId;
+    }
+
+    startBtn.addEventListener("click", () => {
+      if (!selectedLevel || !selectedUnit) return;
+      const p = new URLSearchParams({ level: selectedLevel, unit: selectedUnit });
+      location.href = `/quiz.html?${p.toString()}`;
+    });
+
+    init();
+  </script>
+<footer style="display: flex; padding: 8px; font-size: 12px; border-top: 1px solid #eee;"></footer>
+</body>
+</html>

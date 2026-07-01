@@ -55,9 +55,8 @@
     if (me) userLabel.textContent = `受験者：${me.display_name}`;
   }).catch(() => {});
 
-  const unitsParams = new URLSearchParams({ level });
-  errorBack.href = `/units.html?${unitsParams.toString()}`;
-  const unitsUrl = `/units.html?${unitsParams.toString()}`;
+  errorBack.href = `/select.html`;
+  const unitsUrl = `/select.html`;
 
   let questions = [];
   let answers = []; // 各問の選択。未回答は -1

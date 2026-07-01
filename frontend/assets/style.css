@@ -1358,3 +1358,43 @@ code {
   border-bottom: 1px solid #fff;
 }
 .admin-nav-btn .inbox-badge { margin-left: 6px; }
+
+/* 問題選択（難易度・単元の選択カード） */
+.sel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.sel-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 12px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  transition: border-color .12s, background .12s;
+}
+.sel-card:hover { border-color: var(--primary); background: #f6f9ff; }
+.sel-card.is-selected {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+.sel-card.is-selected .prog-chip { background: rgba(255,255,255,.25); color:#fff; }
+.sel-card.is-disabled, .sel-card[disabled] {
+  opacity: .45; cursor: not-allowed;
+}
+.sel-card.is-disabled:hover, .sel-card[disabled]:hover {
+  border-color: var(--border); background: #fff;
+}
+.sel-card-title { font-size: 15px; }
+.sel-card-sub { font-size: 12px; font-weight: 500; }
