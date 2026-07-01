@@ -1057,7 +1057,37 @@ def get_history_by_user_id(user_id: int, limit: int = 50):
         return out
 
 
-def get_all_unit_progress_by_account(source: str = SOURCE_RAG) -> List[dict]:
+def delete_attempt(attempt_id: int, user_id: int) -> Optional[dict]:
+    """受験記録を1件削除し、該当単元の進捗を再計算する。
+
+    削除した attempt の level/unit を返す（呼び出し側での通知用）。存在しなければ None。
+    本人確認のため user_id も一致条件にする。
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, user_id, level, source, details, username "
+            "FROM attempts WHERE id = ? AND user_id = ?",
+            (attempt_id, user_id),
+        ).fetchone()
+        if row is None:
+            return None
+        d = dict(row)
+        meta = _extract_attempt_meta(d.get("details"))
+        level = d.get("level")
+        unit_id = meta.get("unit")
+        source = d.get("source") or SOURCE_RAG
+        username = d.get("username")
+        conn.execute(
+            "DELETE FROM attempts WHERE id = ? AND user_id = ?",
+            (attempt_id, user_id),
+        )
+        # 削除後、その単元の進捗（満点回数・クリア状況）を再計算する。
+        if level and unit_id:
+            try:
+                recompute_unit_progress(conn, user_id, username, level, unit_id, source)
+            except Exception:
+                pass
+        return {"level": level, "unit_id": unit_id}
     """user_id が紐づく進捗行のみ返す（管理画面のアカウント別一覧用）。"""
     with get_conn() as conn:
         rows = conn.execute(

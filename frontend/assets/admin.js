@@ -122,47 +122,92 @@
 
   async function loadHistory(userId, displayName) {
     historyCard.style.display = "block";
-    historyTitle.textContent = `受験履歴：${displayName}`;
+    historyTitle.textContent = `${displayName} さんの記録`;
     historyArea.innerHTML = '<div class="loading">読み込み中…</div>';
     historyCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    historyArea.dataset.userId = userId;
     try {
       const data = await fetchJson(
         `/api/${ADMIN_TOKEN}/admin/history?user_id=${encodeURIComponent(userId)}`
       );
-      renderHistory(data.attempts || [], data.required || 3);
+      renderUserDetail(userId, data);
     } catch (e) {
-      historyArea.innerHTML = `<div class="empty">履歴の取得に失敗しました: ${escapeHtml(e.message)}</div>`;
+      historyArea.innerHTML = `<div class="empty">記録の取得に失敗しました: ${escapeHtml(e.message)}</div>`;
     }
   }
 
-  function renderHistory(attempts, requiredCount) {
-    if (attempts.length === 0) {
-      historyArea.innerHTML = '<div class="empty">この受験者の履歴はありません</div>';
-      return;
+  // 受験者マイページと同じ2部構成（単元別進捗＋受験履歴）で表示する。
+  function renderUserDetail(userId, data) {
+    const progressHtml = renderUnitProgress(data.units_progress || []);
+    const historyHtml = renderHistory(data.attempts || [], data.required || 3, userId);
+    historyArea.innerHTML = progressHtml + historyHtml;
+    // 削除ボタンのハンドラ
+    historyArea.querySelectorAll(".hist-del").forEach((btn) => {
+      btn.addEventListener("click", () => deleteAttempt(userId, btn.dataset.id));
+    });
+  }
+
+  // 単元別進捗（マイページと同じ：級ごとに 単元・進捗・最終受験）
+  function renderUnitProgress(unitsProgress) {
+    if (!unitsProgress.length) {
+      return '<h3 style="margin:4px 0 6px;">単元別進捗</h3><div class="empty">進捗はまだありません</div>';
     }
-    // 正答率の数値は表示せず、記録1行全体を正答率バンドで色付けする
-    // （満点=緑 / 61〜99%=黄 / 60%以下=赤）。
-    // 満点の行はレベルの右に（N/3）を付け、何回目の満点かを示す（クライアント要望）。
+    const sections = unitsProgress.map((sec) => {
+      const rows = (sec.units || []).map((u) => {
+        const status = u.cleared
+          ? '<span class="prog-chip prog-chip--cleared">クリア</span>'
+          : `<span class="prog-chip">${u.perfect_count}/${u.required_streak}</span>`;
+        const last = u.last_taken_at ? fmtDate(u.last_taken_at) : "−";
+        return `<tr><td>${escapeHtml(u.name)}</td><td>${status}</td><td>${last}</td></tr>`;
+      }).join("");
+      return `<h4 style="margin:12px 0 6px;">${levelLabel(sec.level)}</h4>
+        <table class="data">
+          <thead><tr><th>単元</th><th>進捗</th><th>最終受験</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }).join("");
+    return `<h3 style="margin:4px 0 6px;">単元別進捗</h3>${sections}`;
+  }
+
+  function renderHistory(attempts, requiredCount, userId) {
+    if (!attempts.length) {
+      return '<h3 style="margin:20px 0 6px;">受験履歴</h3><div class="empty">受験履歴はありません</div>';
+    }
     const rows = attempts.map((a) => {
-      const kind = a.unit_name
-        ? escapeHtml(a.unit_name)
-        : escapeHtml(levelLabel(a.level));
-      const perfectNo = a.perfect_no
-        ? `（${a.perfect_no}/${requiredCount}）`
-        : "";
+      const kind = a.unit_name ? escapeHtml(a.unit_name) : escapeHtml(levelLabel(a.level));
+      const perfectNo = a.perfect_no ? `（${a.perfect_no}/${requiredCount}）` : "";
+      const pill = `<span class="score-pill ${pillClass(a.pct)}">${a.score} / ${a.total}</span>`;
       return `<tr class="hist-row hist-row--${rateClass(a.pct)}">
         <td>${fmtDate(a.taken_at)}</td>
         <td>${kind}</td>
         <td>${levelLabel(a.level)}${perfectNo}</td>
+        <td>${pill}</td>
+        <td><button type="button" class="btn btn-secondary hist-del" data-id="${a.id}"
+              style="padding:3px 8px; font-size:12px; white-space:nowrap;">削除</button></td>
       </tr>`;
     }).join("");
-    historyArea.innerHTML = `
+    return `<h3 style="margin:20px 0 6px;">受験履歴</h3>
       <table class="data hist-table">
-        <thead><tr><th>受験日時</th><th>単元</th><th>レベル</th></tr></thead>
+        <thead><tr><th>受験日時</th><th>単元</th><th>レベル</th><th>得点</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
-      </table>
-      <p class="muted hist-legend">行の色＝正答率（<span class="lg lg-high">緑：満点</span>／<span class="lg lg-mid">黄：61〜99%</span>／<span class="lg lg-low">赤：60%以下</span>）</p>
-    `;
+      </table>`;
+  }
+
+  async function deleteAttempt(userId, attemptId) {
+    if (!confirm("この受験記録を削除しますか？\n削除すると単元の進捗（満点回数・クリア状況）も再計算されます。")) return;
+    try {
+      const res = await fetch(
+        `/api/${ADMIN_TOKEN}/admin/attempts/${attemptId}?user_id=${encodeURIComponent(userId)}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "削除に失敗しました");
+      // 一覧（進捗チップ）も更新し、詳細を再読込
+      await load();
+      await loadHistory(userId, historyTitle.textContent.replace(" さんの記録", ""));
+    } catch (e) {
+      alert("削除に失敗: " + e.message);
+    }
   }
 
   // ===== 異議申し立て（チャレンジ） =====

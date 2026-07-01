@@ -120,21 +120,75 @@ def admin_history(token: str, user_id: int):
         unit_id = a.get("unit")
         out.append(
             {
+                "id": a.get("id"),  # 削除操作のためのID
                 "taken_at": a.get("taken_at"),
                 "level": a.get("level"),
                 "unit_id": unit_id,
                 "unit_name": name_map.get(unit_id) if unit_id else None,
-                "pct": pct,  # 正答率のみ。得点は意図的に返さない。
+                "score": score,
+                "total": total,
+                "pct": pct,
                 # 満点なら「何回目の満点か」（同一レベル×単元の通算。クリア閾値と並べて表示する用）
                 "perfect_no": perfect_no_by_id.get(a.get("id")),
             }
         )
+
+    # 単元別進捗（受験者マイページと同じ表示に揃えるため同梱する）
+    units_progress = _build_units_progress(user_id)
+
     return {
         "username": account["display_name"],
         "email": account["email"],
         "attempts": out,
+        "units_progress": units_progress,
         "required": UNIT_CLEAR_REQUIRED_STREAK,
     }
+
+
+def _build_units_progress(user_id: int):
+    """指定ユーザーの、級ごと・単元ごとの進捗を受験者マイページと同じ形で組み立てる。"""
+    from backend.config import required_streak_for
+    from backend.rag_perspectives import available_cells
+    from backend.config import VISA_TYPE_UNITS, UNIT_ORDER
+
+    order = {u: i for i, u in enumerate(UNIT_ORDER)}
+    out = []
+    for level in ("beginner", "intermediate", "advanced"):
+        pmap = db.get_progress_map_by_user_id(user_id, level, source=SOURCE_RAG)
+        cells = [c for c in available_cells()
+                 if c["level"] == level and c["unit_id"] in VISA_TYPE_UNITS]
+        cells.sort(key=lambda c: order.get(c["unit_id"], 99))
+        units = []
+        for c in cells:
+            uid = c["unit_id"]
+            prog = pmap.get(uid) or {}
+            perfect = prog.get("perfect_count", 0)
+            graduated = prog.get("graduated_at")
+            required = required_streak_for(uid)
+            units.append({
+                "id": uid,
+                "name": c["unit_name"],
+                "perfect_count": perfect,
+                "required_streak": required,
+                "cleared": graduated is not None or perfect >= required,
+                "last_taken_at": prog.get("last_taken_at"),
+            })
+        if units:
+            out.append({"level": level, "units": units})
+    return out
+
+
+@router.delete("/api/{token}/admin/attempts/{attempt_id}")
+def admin_delete_attempt(token: str, attempt_id: int, user_id: int):
+    """受験記録（受験履歴の1回）を削除し、該当単元の進捗を再計算する。"""
+    _check_token(token)
+    account = db.get_user_by_id(user_id)
+    if account is None:
+        raise HTTPException(404, "アカウントが見つかりません。")
+    res = db.delete_attempt(attempt_id, user_id)
+    if res is None:
+        raise HTTPException(404, "受験記録が見つかりません。")
+    return {"ok": True, "deleted": attempt_id, **res}
 
 
 class AdminPasswordResetRequest(BaseModel):
