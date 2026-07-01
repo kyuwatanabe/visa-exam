@@ -223,6 +223,7 @@
 
       if (q.type === "fill_in") {
         // 穴埋めは解説を出さず、空欄が埋まった原文を表示し、空欄だった箇所だけ強調する
+        feedbackExplanation.parentElement.style.display = "";
         feedbackExplanationLabel.textContent = "正解";
         const ans = Array.isArray(result.correct_answers) ? result.correct_answers : [];
         const parts = (q.question || "").split(/_{2,}/);
@@ -236,23 +237,10 @@
         });
         feedbackExplanation.innerHTML = html;
       } else if (q.type === "multi") {
-        // 複数選択は、各選択肢ごとに正誤と理由を一覧で示す
-        feedbackExplanationLabel.textContent = "解説";
-        const corr = Array.isArray(result.correct_choices) ? result.correct_choices : [];
-        const expl = Array.isArray(result.choice_explanations) ? result.choice_explanations : [];
-        const marks = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ";
-        let html = "<ul class='multi-explain'>";
-        (q.choices || []).forEach((c, i) => {
-          const ok = corr.includes(i);
-          const tag = ok
-            ? "<span class='mx-ok'>◯正</span>"
-            : "<span class='mx-ng'>×誤</span>";
-          const reason = expl[i] ? escapeHtml(expl[i]) : "";
-          html += `<li>${tag} ${marks[i] || (i + 1)}. ${escapeHtml(c)}${reason ? "<br><span class='mx-reason'>" + reason + "</span>" : ""}</li>`;
-        });
-        html += "</ul>";
-        feedbackExplanation.innerHTML = html;
+        // 複数選択は各選択肢の下にインラインで解説を出すため、下部の解説欄は隠す
+        feedbackExplanation.parentElement.style.display = "none";
       } else {
+        feedbackExplanation.parentElement.style.display = "";
         feedbackExplanationLabel.textContent = "解説";
         feedbackExplanation.textContent = result.explanation || "（解説はありません）";
       }
@@ -311,26 +299,27 @@
     // 未採点中の選択状態（配列）。未選択なら空配列。
     const sel = Array.isArray(answers[currentIdx]) ? answers[currentIdx].slice() : [];
     const correct = (result && Array.isArray(result.correct_choices)) ? result.correct_choices : [];
+    const expl = (result && Array.isArray(result.choice_explanations)) ? result.choice_explanations : [];
 
     q.choices.forEach((c, i) => {
       const div = document.createElement("div");
       let cls = "choice choice--multi";
+      const isCorrect = correct.includes(i);
+      const userPicked = sel.includes(i);
       if (isChecked) {
-        const isCorrect = correct.includes(i);
-        const userPicked = sel.includes(i);
-        if (isCorrect) cls += " correct";          // 正答は緑
-        else if (userPicked) cls += " wrong";      // 誤って選んだものは赤
-      } else if (sel.includes(i)) {
+        // 正しい記述=緑、誤った記述=赤（自分が選んだか否かに関わらず記述の正誤で色分け）
+        cls += isCorrect ? " correct" : " wrong";
+      } else if (userPicked) {
         cls += " selected";
       }
       div.className = cls;
-      // チェックボックス風のマーカー
-      const box = (!isChecked && sel.includes(i)) || (isChecked && sel.includes(i)) ? "☑" : "☐";
-      div.innerHTML = `
-        <div class="marker marker--box">${box}</div>
-        <div class="text">${escapeHtml(c)}</div>
-      `;
+      const box = userPicked ? "☑" : "☐";
+
       if (!isChecked) {
+        div.innerHTML = `
+          <div class="marker marker--box">${box}</div>
+          <div class="text">${escapeHtml(c)}</div>
+        `;
         div.addEventListener("click", () => {
           const pos = sel.indexOf(i);
           if (pos >= 0) sel.splice(pos, 1);
@@ -338,7 +327,33 @@
           answers[currentIdx] = sel.slice();
           render();
         });
+        choicesEl.appendChild(div);
+        return;
       }
+
+      // 採点後: この選択肢が正しい記述か／自分が選んだか を明示
+      // ステータス: 記述の正誤（◯正しい / ×誤り）
+      const statusTag = isCorrect
+        ? "<span class='mx-ok'>◯ 正しい記述</span>"
+        : "<span class='mx-ng'>× 誤った記述</span>";
+      // 自分の選択の当否
+      let youTag = "";
+      if (userPicked && isCorrect) youTag = "<span class='mx-you mx-you-ok'>あなたの選択：正解</span>";
+      else if (userPicked && !isCorrect) youTag = "<span class='mx-you mx-you-ng'>あなたの選択：不正解</span>";
+      else if (!userPicked && isCorrect) youTag = "<span class='mx-you mx-you-miss'>選べていない正解</span>";
+
+      // 解説の要否: 「正しいと思って選び、実際に正解だった」場合のみ不要
+      const suppress = userPicked && isCorrect;
+      const reason = (!suppress && expl[i]) ? `<div class="mx-reason">${escapeHtml(expl[i])}</div>` : "";
+
+      div.innerHTML = `
+        <div class="marker marker--box">${box}</div>
+        <div class="text">
+          <div class="mx-choice-text">${escapeHtml(c)}</div>
+          <div class="mx-tags">${statusTag}${youTag}</div>
+          ${reason}
+        </div>
+      `;
       choicesEl.appendChild(div);
     });
 

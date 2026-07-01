@@ -1300,3 +1300,15 @@ code {
 .mx-ok { color: var(--success); font-weight: 700; margin-right: 4px; }
 .mx-ng { color: var(--danger); font-weight: 700; margin-right: 4px; }
 .mx-reason { color: var(--muted); font-size: 13px; }
+
+/* 複数選択・採点後の選択肢内タグと解説 */
+.choice--multi .text { display: block; }
+.mx-choice-text { line-height: 1.5; }
+.mx-tags { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mx-tags .mx-ok, .mx-tags .mx-ng { font-size: 12px; }
+.mx-you {
+  font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px;
+}
+.mx-you-ok   { background: var(--success-bg); color: var(--success); }
+.mx-you-ng   { background: var(--danger-bg);  color: var(--danger); }
+.mx-you-miss { background: #fff4e0;           color: #8a6d2f; }
