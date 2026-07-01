@@ -83,7 +83,7 @@
 
   async function loadQuestions() {
     try {
-      loadingEl.textContent = "問題を生成中…";
+      loadingEl.textContent = "問題を生成中… しばらくお待ちください";
 
       // ヘッダ用の単元名取得（失敗は致命的でない）
       try {

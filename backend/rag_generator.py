@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, List, Optional, Tuple
 
 from backend import rag_perspectives, rag_source
@@ -21,6 +22,7 @@ from backend.config import (
     RAG_MAX_TOKENS,
     RAG_MAX_TOKENS_MULTI,
     RAG_TAIL_BATCH,
+    RAG_GEN_CONCURRENCY,
     RAG_MODEL,
     YESNO_CHOICES,
 )
@@ -532,16 +534,42 @@ def generate_questions(
             level, unit_id, perspectives, seed=seed,
             llm_call=llm_call, max_retries=max_retries,
         )
-    all_questions: List[dict] = []
-    merged_metrics: dict = {}
+
+    # 複数バッチを並列に生成してトータル時間を短縮する（各バッチは独立）。
+    chunks = []
     for start in range(0, len(perspectives), batch):
         chunk = perspectives[start:start + batch]
-        # seed はチャンクごとにずらして観点割り当ての乱数を変える
         chunk_seed = None if seed is None else seed + start
-        part = _generate_questions_batch(
+        chunks.append((start, chunk, chunk_seed))
+
+    results: dict = {}
+    first_error: Optional[Exception] = None
+
+    def _run(idx: int, chunk: List[dict], chunk_seed: Optional[int]):
+        return idx, _generate_questions_batch(
             level, unit_id, chunk, seed=chunk_seed,
             llm_call=llm_call, max_retries=max_retries,
         )
+
+    max_workers = min(RAG_GEN_CONCURRENCY, len(chunks))
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futures = [ex.submit(_run, i, c, s) for (i, (start, c, s)) in enumerate(chunks)]
+        for fut in as_completed(futures):
+            try:
+                idx, part = fut.result()
+                results[idx] = part
+            except Exception as e:  # noqa: BLE001
+                if first_error is None:
+                    first_error = e
+
+    if first_error is not None:
+        # 1バッチでも失敗したら全体を失敗扱い（部分検定にしない）。
+        raise first_error
+
+    all_questions: List[dict] = []
+    merged_metrics: dict = {}
+    for idx in range(len(chunks)):
+        part = results[idx]
         all_questions.extend(part["questions"])
         merged_metrics = merge_metrics(merged_metrics, part.get("metrics", {}))
     return {"questions": all_questions, "metrics": merged_metrics}

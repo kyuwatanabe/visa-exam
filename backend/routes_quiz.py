@@ -165,13 +165,12 @@ def rag_quiz_start(req: RagStartRequest, user: dict = Depends(auth.get_current_u
             "gen_metrics": pooled.get("meta", {}),
         }
 
-    # プールが空: 従来のその場生成（ヘッド即返し＋テイル分割）にフォールバック。
-    head = perspectives[:RAG_HEAD_COUNT]
-    tail = perspectives[RAG_HEAD_COUNT:]
-
+    # プールが空: その場で全問を一括生成して返す（バッチは並列生成）。
+    # テイル方式（開始後に残りを追い生成）は Sonnet では遅く「準備中」で
+    # 待たされるため、開始時に全問そろえて確実にする。プールが埋まれば即時払い出しになる。
     try:
         gen = rag_generator.generate_questions(
-            req.level, req.unit, head, seed=seed
+            req.level, req.unit, perspectives, seed=seed
         )
     except rag_generator.RAGGenerationError as e:
         msg = str(e)
@@ -180,21 +179,21 @@ def rag_quiz_start(req: RagStartRequest, user: dict = Depends(auth.get_current_u
         raise HTTPException(502, f"RAG出題の生成に失敗しました: {msg}")
 
     session = rag_session_store.create_session(
-        username=user["email"],  # セッション帰属の識別はメール（UNIQUE）で行う
+        username=user["email"],
         level=req.level,
         unit_id=req.unit,
         questions=gen["questions"],
         metrics=gen["metrics"],
-        pending_perspectives=tail,
+        pending_perspectives=[],  # 全問そろっているのでテイル無し
     )
     return {
         "level": req.level,
         "unit": req.unit,
         "session_id": session["session_id"],
         "questions": session["questions"],
-        "total_questions": len(perspectives),
-        "head_count": len(head),
-        "pending_count": len(tail),
+        "total_questions": len(gen["questions"]),
+        "head_count": len(gen["questions"]),
+        "pending_count": 0,
         "gen_metrics": gen["metrics"],
     }
 

@@ -76,6 +76,9 @@ RAG_HEAD_COUNT = int(os.environ.get("RAG_HEAD_COUNT", "1"))
 # テイル（残り問題）は1回の continue で最大この問数ずつ生成する。
 # 大きすぎると1回の生成が重く（出力上限超過・時間切れ）なるため小さめに分割する。
 RAG_TAIL_BATCH = int(os.environ.get("RAG_TAIL_BATCH", "2"))
+# 全問一括生成時に、バッチを何本まで並列にLLM呼び出しするか。
+# 大きいほど速いが、APIのレート制限に当たりやすくなる。社内利用は少なめで十分。
+RAG_GEN_CONCURRENCY = int(os.environ.get("RAG_GEN_CONCURRENCY", "4"))
 RAG_SESSION_TTL_SEC = int(os.environ.get("RAG_SESSION_TTL_SEC", "7200"))  # セッション保持（既定2時間）
 
 # --- DEV ONLY（撤去予定）: 管理画面確認用デモデータ生成ボタン -----------------
