@@ -78,20 +78,30 @@ def _build_user_prompt(
     lines.append("")
     lines.append(f"# 単元\n{unit_name}")
     lines.append("")
-    lines.append(f"# 出題する観点（各観点につき1問、計{len(perspectives)}問）")
-    for p in perspectives:
-        pages = ",".join(str(x) for x in p.get("source_pages", []))
-        lines.append(
-            f"- {p['id']}: {p['name']} / {p.get('summary','')} / 根拠ページ {pages}"
-        )
-    lines.append("")
 
-    # 上級（multi）は、5つの選択肢を単元全体の異なる観点から作るため、
-    # 単元の全観点一覧を提示して素材を与える。
-    if fmt == "multi" and unit_perspectives:
-        lines.append("# この単元の観点一覧（選択肢はこの中の異なる複数の観点から作る）")
-        for p in unit_perspectives:
-            lines.append(f"- {p.get('name','')}: {p.get('summary','')}")
+    if fmt == "multi":
+        # 上級（複数選択）は「観点1つ＝1問」にしない。各問の5択を単元の
+        # 複数観点にまたがらせるため、単元の観点一覧だけを素材として提示する。
+        n_q = len(perspectives)
+        lines.append(f"# 出題数\n独立した設問を{n_q}問つくる。")
+        lines.append("")
+        pool = unit_perspectives if unit_perspectives else perspectives
+        lines.append("# この単元の観点一覧（各問の選択肢は、この中の異なる複数の観点から作る）")
+        for idx, p in enumerate(pool, 1):
+            lines.append(f"{idx}. {p.get('name','')}: {p.get('summary','')}")
+        lines.append("")
+        # perspective_id 用に、代表として使える観点idを列挙
+        ids = [p.get("id", "") for p in perspectives if p.get("id")]
+        if ids:
+            lines.append(f"# perspective_id に使える観点id\n{', '.join(ids)}")
+            lines.append("")
+    else:
+        lines.append(f"# 出題する観点（各観点につき1問、計{len(perspectives)}問）")
+        for p in perspectives:
+            pages = ",".join(str(x) for x in p.get("source_pages", []))
+            lines.append(
+                f"- {p['id']}: {p['name']} / {p.get('summary','')} / 根拠ページ {pages}"
+            )
         lines.append("")
 
     if fmt == "yesno":
@@ -127,30 +137,33 @@ def _build_user_prompt(
         )
     elif fmt == "multi":
         lines.append(
-            "# 出力JSON形式（このスキーマちょうど。questions は上の観点と同数）\n"
+            "# 出力JSON形式（このスキーマちょうど。questions は上の出題数と同数）\n"
             '{ "questions": [ { "perspective_id": "観点id", '
             '"question": "正しいものを1つ、または2つ選びなさい。", '
             f'"choices": [{"、".join([chr(34)+"選択肢"+str(i+1)+chr(34) for i in range(n_choices)])}], '
             '"answer_indices": [0, 2], '
             f'"choice_explanations": [{"、".join([chr(34)+"選択肢"+str(i+1)+"が正しい/誤りである理由"+chr(34) for i in range(n_choices)])}], '
             '"source_pages": [21] } ] }\n'
+            "## 最重要ルール（必ず守る）\n"
+            f"- **各設問の {n_choices} 個の選択肢は、必ず『この単元の観点一覧』の"
+            f"互いに異なる {n_choices} 個の観点から、1観点につき1つずつ作る。"
+            "同じ観点を2つ以上使ってはならない。"
+            "5つの選択肢が同じ話題（例: B-1 industrial worker）に偏るのは禁止。**\n"
+            "- 具体例: 選択肢1はVWPとの関係、選択肢2は対象者要件、選択肢3は滞在期間、"
+            "選択肢4は他ビザとの違い、選択肢5は例外規定、のように観点をばらす。\n"
+            "- 設問ごとに使う観点の組み合わせを変え、単元全体を広くカバーする。\n"
+            "## その他のルール\n"
             f"- choices はちょうど {n_choices} 個。\n"
             "- answer_indices は0始まりの配列で、**正しい選択肢を1〜2個**含める"
             "（必ず1個以上2個以下）。残りは誤答にする。\n"
-            "- 重要: 正答が1個の設問と2個の設問を混在させ、正答の個数・位置を設問ごとに"
-            "ばらつかせること（毎回2個などに偏らせない）。\n"
-            "- 上級なので誤答は『一見もっともらしいが原本に照らすと誤り』にし、正答との差を"
-            "細部に置く。明らかに無関係な選択肢ばかりにしない。\n"
+            "- 正答が1個の設問と2個の設問を混在させ、正答の個数・位置を設問ごとに"
+            "ばらつかせる（毎回2個などに偏らせない）。\n"
+            "- 誤答は『一見もっともらしいが原本に照らすと誤り』にし、正答との差を細部に置く。\n"
             "- 設問文は必ず「正しいものを1つ、または2つ選びなさい。」とする。\n"
+            "- perspective_id は『perspective_id に使える観点id』のいずれかを入れる。\n"
             f"- choice_explanations は choices と同じ {n_choices} 個。各選択肢について、"
             "それが正しいか誤りかを明示し、その理由を原本に基づき1文で簡潔に述べる"
             "（例:『正しい。○○だから。』『誤り。実際は○○のため。』）。\n"
-            "- **各設問の5つの選択肢は、上の『この単元の観点一覧』にある"
-            "互いに異なる複数の観点から1つずつ作ること。5つとも同じ観点"
-            "（例: B-1 industrial worker だけ）に偏らせてはならない。"
-            "用途・要件・対象者・期間・例外・他ビザとの違い・VWPとの関係など、"
-            "単元全体を広くカバーする。**\n"
-            "- perspective_id は設問の代表的な観点idを入れればよい（選択肢は複数観点から作る）。\n"
             "**原本の文をそのまま引用したり「原本p.◯に『…』と記されており」のような引用形式で"
             "書いたりしてはならない。ページ番号への言及も不要。**"
         )
