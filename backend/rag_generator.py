@@ -148,29 +148,29 @@ def _build_user_prompt(
             "# 出力JSON形式（このスキーマちょうど。questions は上の出題数と同数）\n"
             '{ "questions": [ { "perspective_id": "観点id", '
             '"question": "正しいものを1つ、または2つ選びなさい。", '
-            f'"choices": [{"、".join([chr(34)+"選択肢"+str(i+1)+chr(34) for i in range(n_choices)])}], '
-            '"answer_indices": [0, 2], '
-            f'"choice_explanations": [{"、".join([chr(34)+"選択肢"+str(i+1)+"が正しい/誤りである理由"+chr(34) for i in range(n_choices)])}], '
+            '"choice_items": [ '
+            '{ "text": "選択肢の記述文", "correct": true, "reason": "正しい/誤りの理由（理由だけ。文頭に『正しい』『誤り』とは書かない）" } '
+            f'… 全{n_choices}個 ], '
             '"source_pages": [21] } ] }\n'
             "## 最重要ルール（必ず守る）\n"
             "- **設問文（question）は必ず「正しいものを1つ、または2つ選びなさい。」だけにする。"
             "特定の話題を設問文に付けてはならない。**\n"
-            f"- **各設問の {n_choices} 個の選択肢は、上の『各設問の選択肢に割り当てる観点』の"
-            "割り当て通りに、観点1つにつき選択肢1つを作る（選択肢の順＝観点の順）。"
-            "割り当てを無視して同じ話題に偏らせてはならない。**\n"
-            "- 各選択肢は、割り当てられた観点の内容に基づき、"
-            "『正しい記述』または『一見もっともらしいが原本に照らすと誤りの記述』のどちらかにする。\n"
-            "- 各設問で、正しい記述をちょうど1〜2個にし、残りは誤りの記述にする"
-            "（answer_indices に正しい選択肢の位置を入れる）。\n"
-            "- 設問ごとに正答の個数（1個か2個か）と位置をばらつかせる。\n"
+            f"- **choice_items はちょうど {n_choices} 個。各要素は、上の『各設問の選択肢に"
+            "割り当てる観点』の割り当て通りに、観点1つにつき1個作る（順番＝観点の順）。**\n"
+            "- 各要素の text は、割り当てられた観点の内容に基づく記述文。"
+            "correct が true なら『原本に照らして正しい記述』、false なら"
+            "『一見もっともらしいが原本に照らすと誤りの記述』にする。\n"
+            "- **correct と text と reason は必ず整合させる。"
+            "correct=true の text は正しい内容、correct=false の text は誤った内容にし、"
+            "reason はその判定の理由にする（矛盾させない）。**\n"
+            f"- 各設問で、correct=true をちょうど1〜2個にし、残りは false にする"
+            "（全部 true や全部 false は禁止）。\n"
+            "- 設問ごとに true の個数（1個か2個か）と位置をばらつかせる。\n"
             "## その他のルール\n"
-            f"- choices はちょうど {n_choices} 個。\n"
-            "- 誤答は『一見もっともらしいが原本に照らすと誤り』にし、正答との差を細部に置く。\n"
+            "- reason は理由だけを1文で簡潔に書く（文頭に『正しい』『誤り』と書かない。"
+            "正誤は correct で表す）。原本に基づくこと。\n"
             "- 設問文は必ず「正しいものを1つ、または2つ選びなさい。」とする。\n"
             "- perspective_id は『perspective_id に使える観点id』のいずれかを入れる。\n"
-            f"- choice_explanations は choices と同じ {n_choices} 個。各選択肢について、"
-            "それが正しいか誤りかを明示し、その理由を原本に基づき1文で簡潔に述べる"
-            "（例:『正しい。○○だから。』『誤り。実際は○○のため。』）。\n"
             "**原本の文をそのまま引用したり「原本p.◯に『…』と記されており」のような引用形式で"
             "書いたりしてはならない。ページ番号への言及も不要。**"
         )
@@ -317,41 +317,64 @@ def _validate_fill_in(i: int, q: dict) -> dict:
 def _validate_multi(i: int, q: dict, expected_choices: int, unit_name: str = "") -> dict:
     """複数選択（上級）の1問を検証し、内部形式に正規化する。
 
-    choices ちょうど expected_choices 個、answer_indices は1〜2個の正答位置。
-    設問文は、特定の話題に偏らないよう単元名を用いた固定文に強制上書きする
-    （LLMがテーマ付きの設問文を返しても、それは使わない）。
+    choice_items（text/correct/reason を1組）方式を優先。正解位置は correct
+    フラグから導出するため、採点・表示・解説が必ず整合する。
+    旧 answer_indices+choices+choice_explanations 方式もフォールバックで受ける。
+    設問文は単元名を用いた固定文に強制上書きする。
     """
-    question = q.get("question")
-    choices = q.get("choices")
-    answer_indices = q.get("answer_indices")
-    if not isinstance(question, str) or not question.strip():
-        raise ValueError(f"questions[{i}].question が不正")
-    if not isinstance(choices, list) or len(choices) != expected_choices:
-        raise ValueError(
-            f"questions[{i}].choices は {expected_choices} 個必要"
-            f"（実際 {len(choices) if isinstance(choices, list) else 'N/A'}）"
-        )
-    if not all(isinstance(c, str) and c.strip() for c in choices):
-        raise ValueError(f"questions[{i}].choices に空文字が含まれる")
-    if not isinstance(answer_indices, list) or not (1 <= len(answer_indices) <= 2):
-        raise ValueError(f"questions[{i}].answer_indices は1〜2個の配列が必要")
-    norm = sorted({a for a in answer_indices if isinstance(a, int)})
-    if not norm or not all(0 <= a < expected_choices for a in norm):
-        raise ValueError(f"questions[{i}].answer_indices に範囲外の値がある")
-    if not (1 <= len(norm) <= 2):
-        raise ValueError(f"questions[{i}].answer_indices は重複排除後も1〜2個であること")
-
-    # 選択肢ごとの解説（あれば長さを choices に合わせる。無ければ空で許容）
-    raw_ce = q.get("choice_explanations")
-    if isinstance(raw_ce, list):
-        choice_explanations = [
-            (s.strip() if isinstance(s, str) else "") for s in raw_ce
-        ]
-        if len(choice_explanations) < expected_choices:
-            choice_explanations += [""] * (expected_choices - len(choice_explanations))
-        choice_explanations = choice_explanations[:expected_choices]
+    items = q.get("choice_items")
+    if isinstance(items, list) and items:
+        # 新方式: choice_items から choices / correct / reasons を取り出す
+        if len(items) != expected_choices:
+            raise ValueError(
+                f"questions[{i}].choice_items は {expected_choices} 個必要（実際 {len(items)}）"
+            )
+        choices, corrects, reasons = [], [], []
+        for j, it in enumerate(items):
+            if not isinstance(it, dict):
+                raise ValueError(f"questions[{i}].choice_items[{j}] が dict でない")
+            text = it.get("text")
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError(f"questions[{i}].choice_items[{j}].text が不正")
+            choices.append(text.strip())
+            corrects.append(bool(it.get("correct")))
+            reasons.append((it.get("reason") or "").strip())
+        norm = sorted([j for j, c in enumerate(corrects) if c])
+        if not (1 <= len(norm) <= 2):
+            raise ValueError(
+                f"questions[{i}] の correct=true は1〜2個であること（実際 {len(norm)}個）"
+            )
+        choice_explanations = reasons
     else:
-        choice_explanations = [""] * expected_choices
+        # 旧方式フォールバック
+        question = q.get("question")
+        choices = q.get("choices")
+        answer_indices = q.get("answer_indices")
+        if not isinstance(choices, list) or len(choices) != expected_choices:
+            raise ValueError(
+                f"questions[{i}].choices は {expected_choices} 個必要"
+                f"（実際 {len(choices) if isinstance(choices, list) else 'N/A'}）"
+            )
+        if not all(isinstance(c, str) and c.strip() for c in choices):
+            raise ValueError(f"questions[{i}].choices に空文字が含まれる")
+        if not isinstance(answer_indices, list) or not (1 <= len(answer_indices) <= 2):
+            raise ValueError(f"questions[{i}].answer_indices は1〜2個の配列が必要")
+        norm = sorted({a for a in answer_indices if isinstance(a, int)})
+        if not norm or not all(0 <= a < expected_choices for a in norm):
+            raise ValueError(f"questions[{i}].answer_indices に範囲外の値がある")
+        if not (1 <= len(norm) <= 2):
+            raise ValueError(f"questions[{i}].answer_indices は重複排除後も1〜2個であること")
+        choices = [c.strip() for c in choices]
+        raw_ce = q.get("choice_explanations")
+        if isinstance(raw_ce, list):
+            choice_explanations = [
+                (s.strip() if isinstance(s, str) else "") for s in raw_ce
+            ]
+            if len(choice_explanations) < expected_choices:
+                choice_explanations += [""] * (expected_choices - len(choice_explanations))
+            choice_explanations = choice_explanations[:expected_choices]
+        else:
+            choice_explanations = [""] * expected_choices
 
     # 設問文は単元名を用いた固定文に強制上書き（テーマ偏りを防ぐ）
     fixed_question = (
@@ -364,10 +387,10 @@ def _validate_multi(i: int, q: dict, expected_choices: int, unit_name: str = "")
         "perspective_id": q.get("perspective_id", ""),
         "type": "multi",
         "question": fixed_question,
-        "choices": [c.strip() for c in choices],
+        "choices": choices,
         "answer_indices": norm,  # 0始まり、1〜2個
         "choice_explanations": choice_explanations,
-        "explanation": (q.get("explanation") or "").strip(),
+        "explanation": "",
         "source_pages": q.get("source_pages", []),
     }
 
