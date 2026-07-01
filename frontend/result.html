@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - 結果</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.10.0">
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.0">
 </head>
 <body>
   <div class="app-shell">
@@ -38,11 +38,6 @@
       </section>
 
       <section class="card">
-        <h2>各問の振り返り</h2>
-        <div id="review"></div>
-      </section>
-
-      <section class="card">
         <h2>過去の受験履歴</h2>
         <div id="history-area">
           <div class="loading">読み込み中…</div>
@@ -57,7 +52,7 @@
     </main>
   </div>
 
-  <script src="/assets/common.js?v=1.10.0"></script>
+  <script src="/assets/common.js?v=1.11.0"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const level = params.get("level") || "beginner";
@@ -114,8 +109,6 @@
       } else {
         retryLink.href = unitsLink.href;
       }
-
-      renderReview(result.results);
 
       // 暫定スコア表示（チャレンジ中の問題がある場合）
       if (challengedIds.size > 0) {

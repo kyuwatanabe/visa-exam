@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Request
 from pydantic import BaseModel, Field
 
 from backend import auth, db, rag_perspectives
@@ -303,7 +303,35 @@ def admin_get_source_files(token: str):
     return {"files": files}
 
 
-@router.post("/api/{token}/admin/source/upload")
+# --- プロンプト修正（質問・回答の追加指示） -----------------------------------
+
+@router.get("/api/{token}/admin/prompts")
+def admin_get_prompts(token: str):
+    """管理画面で編集できるプロンプト追加指示（質問・回答）を返す。"""
+    _check_token(token)
+    from backend import db
+    from backend.rag_generator import PROMPT_KEY_QUESTION, PROMPT_KEY_ANSWER
+    m = db.get_settings_map([PROMPT_KEY_QUESTION, PROMPT_KEY_ANSWER])
+    return {
+        "question": m.get(PROMPT_KEY_QUESTION) or "",
+        "answer": m.get(PROMPT_KEY_ANSWER) or "",
+    }
+
+
+@router.post("/api/{token}/admin/prompts")
+async def admin_set_prompts(token: str, request: Request):
+    """質問・回答のプロンプト追加指示を保存する。"""
+    _check_token(token)
+    from backend import db
+    from backend.rag_generator import PROMPT_KEY_QUESTION, PROMPT_KEY_ANSWER
+    body = await request.json()
+    question = (body.get("question") or "").strip()
+    answer = (body.get("answer") or "").strip()
+    if len(question) > 5000 or len(answer) > 5000:
+        raise HTTPException(400, "追加指示が長すぎます（各5000文字以内）。")
+    db.set_setting(PROMPT_KEY_QUESTION, question)
+    db.set_setting(PROMPT_KEY_ANSWER, answer)
+    return {"ok": True, "question": question, "answer": answer}
 async def admin_upload_source(token: str, file: UploadFile = File(...)):
     """PDF をアップロードして、自動的にテキストに変換する。
 

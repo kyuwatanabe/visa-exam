@@ -205,6 +205,46 @@ def _build_user_prompt(
     return "\n".join(lines)
 
 
+# --- 管理画面から編集できるプロンプト追加指示 ---------------------------------
+# 質問（問題文・選択肢）と回答（解説）に関する追加指示を管理画面から保存でき、
+# 生成プロンプトの末尾に注入する。JSON構造は固定のまま、方針だけを調整する用途。
+PROMPT_KEY_QUESTION = "prompt_question_extra"
+PROMPT_KEY_ANSWER = "prompt_answer_extra"
+
+_prompt_cache: dict = {"at": 0.0, "question": "", "answer": ""}
+_PROMPT_CACHE_TTL = 20  # 秒
+
+
+def _get_prompt_extras() -> Tuple[str, str]:
+    """管理画面で設定された質問／回答の追加指示を返す（短時間キャッシュ）。"""
+    now = time.monotonic()
+    if now - _prompt_cache["at"] < _PROMPT_CACHE_TTL:
+        return _prompt_cache["question"], _prompt_cache["answer"]
+    q, a = "", ""
+    try:
+        from backend import db
+        m = db.get_settings_map([PROMPT_KEY_QUESTION, PROMPT_KEY_ANSWER])
+        q = (m.get(PROMPT_KEY_QUESTION) or "").strip()
+        a = (m.get(PROMPT_KEY_ANSWER) or "").strip()
+    except Exception:
+        pass
+    _prompt_cache.update({"at": now, "question": q, "answer": a})
+    return q, a
+
+
+def _append_prompt_extras(prompt: str) -> str:
+    """生成プロンプトの末尾に、管理画面で設定した追加指示を注記として付ける。"""
+    q, a = _get_prompt_extras()
+    extra = []
+    if q:
+        extra.append("# 【管理者からの追加指示：質問（問題文・選択肢）】\n" + q)
+    if a:
+        extra.append("# 【管理者からの追加指示：回答（解説）】\n" + a)
+    if not extra:
+        return prompt
+    return prompt + "\n\n" + "\n\n".join(extra)
+
+
 def _real_llm_call(system_blocks: list, user_text: str, max_tokens: int = RAG_MAX_TOKENS) -> Tuple[str, dict]:
     """Anthropic Messages API を実呼び出しする。プロンプトキャッシュ利用。"""
     if not ANTHROPIC_API_KEY:
@@ -688,6 +728,8 @@ def _generate_questions_batch(
         unit_perspectives=meta.get("perspectives", []),
         multi_assignments=multi_assignments,
     )
+    # 管理画面で設定した質問／回答の追加指示を末尾に注入する。
+    user_prompt = _append_prompt_extras(user_prompt)
     # システムブロック: 指示は静的。原本テキストは大きく同一単元の連続生成で
     # 使い回せるため、キャッシュ対象（ephemeral）ブロックとして置く。
     # ヘッド生成でキャッシュが温まり、テイル生成では原本入力が実質タダになる。

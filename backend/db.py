@@ -179,6 +179,16 @@ def _init_db_postgres() -> None:
             "CREATE INDEX IF NOT EXISTS idx_quiz_pool_lookup "
             "ON quiz_pool(level, unit_id, claimed)"
         )
+        # アプリ設定（キー・バリュー）。プロンプトの追加指示などを保存する。
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key        TEXT PRIMARY KEY,
+                value      TEXT,
+                updated_at TEXT
+            )
+            """
+        )
 
         # 認証: ユーザーアカウント（メール＋パスワード）。
         cur.execute(
@@ -348,6 +358,16 @@ def _init_db_sqlite() -> None:
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_quiz_pool_lookup "
             "ON quiz_pool(level, unit_id, claimed)"
+        )
+        # アプリ設定（キー・バリュー）。プロンプトの追加指示などを保存する。
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key        TEXT PRIMARY KEY,
+                value      TEXT,
+                updated_at TEXT
+            )
+            """
         )
 
         # 認証: ユーザーアカウント（メール＋パスワード）。
@@ -810,6 +830,53 @@ def pool_cleanup_claimed(older_than_iso: str) -> int:
             (older_than_iso,),
         )
         return cur.rowcount or 0
+
+
+# --- アプリ設定（プロンプト等） ------------------------------------------------
+
+def get_setting(key: str) -> Optional[str]:
+    """設定値を1件取得する。無ければ None。"""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT value FROM app_settings WHERE key = ?", (key,)
+        ).fetchone()
+        if row is None:
+            return None
+        return dict(row).get("value")
+
+
+def set_setting(key: str, value: str) -> None:
+    """設定値を1件保存（upsert）する。"""
+    with get_conn() as conn:
+        if IS_POSTGRES:
+            conn.execute(
+                """
+                INSERT INTO app_settings (key, value, updated_at)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (key) DO UPDATE
+                   SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
+                """,
+                (key, value, _now_iso()),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+                (key, value, _now_iso()),
+            )
+
+
+def get_settings_map(keys: list) -> dict:
+    """複数キーの設定値をまとめて取得する（無いキーは含めない）。"""
+    if not keys:
+        return {}
+    placeholders = ",".join("?" for _ in keys)
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"SELECT key, value FROM app_settings WHERE key IN ({placeholders})",
+            tuple(keys),
+        ).fetchall()
+        return {dict(r)["key"]: dict(r)["value"] for r in rows}
 
 
 def cleanup_expired_sessions() -> int:

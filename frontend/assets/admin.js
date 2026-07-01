@@ -22,9 +22,6 @@
   const historyArea = document.getElementById("history-area");
   const challengesArea = document.getElementById("challenges-area");
   const challengeStatusFilter = document.getElementById("challenge-status-filter");
-  const challengesModal = document.getElementById("challenges-modal");
-  const challengesClose = document.getElementById("challenges-close");
-  const inboxBtn = document.getElementById("inbox-btn");
   const inboxBadge = document.getElementById("inbox-badge");
   let allChallenges = [];   // 取得した全チャレンジ（バッジ件数とフィルタ表示の元データ）
 
@@ -60,7 +57,9 @@
       renderUsers(data.users || []);
       loadingEl.style.display = "none";
       contentEl.style.display = "block";
+      // 起動時にチャレンジ件数を取得してバッジを更新（一覧描画も兼ねる）
       loadChallenges();
+      challengesLoaded = true;
     } catch (e) {
       showError(`データの取得に失敗しました: ${e.message}`);
     }
@@ -340,21 +339,32 @@
     challengeStatusFilter.addEventListener("change", renderFilteredChallenges);
   }
 
-  // 受信箱ボタン: 一覧モーダルを開く（開くたびに最新化）。
-  function openChallenges() {
-    challengesModal.hidden = false;
-    loadChallenges();
-  }
-  function closeChallenges() {
-    challengesModal.hidden = true;
-  }
-  if (inboxBtn) inboxBtn.addEventListener("click", openChallenges);
-  if (challengesClose) challengesClose.addEventListener("click", closeChallenges);
-  if (challengesModal) {
-    challengesModal.addEventListener("click", (e) => {
-      if (e.target === challengesModal) closeChallenges();  // 背景クリックで閉じる
+  // ==================== メニュー（タブ）切り替え ====================
+  const navBtns = Array.from(document.querySelectorAll(".admin-nav-btn"));
+  const views = {
+    users: document.getElementById("view-users"),
+    source: document.getElementById("view-source"),
+    challenges: document.getElementById("view-challenges"),
+    prompts: document.getElementById("view-prompts"),
+  };
+  let challengesLoaded = false;
+  let promptsLoaded = false;
+
+  function switchView(name) {
+    Object.entries(views).forEach(([k, el]) => {
+      if (el) el.style.display = (k === name) ? "" : "none";
     });
+    navBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.view === name));
+    if (name === "challenges" && !challengesLoaded) {
+      challengesLoaded = true;
+      loadChallenges();
+    }
+    if (name === "prompts" && !promptsLoaded) {
+      promptsLoaded = true;
+      loadPrompts();
+    }
   }
+  navBtns.forEach((b) => b.addEventListener("click", () => switchView(b.dataset.view)));
 
   load();
 
@@ -461,4 +471,50 @@
 
   // 初期化時にソースファイルを読み込む
   loadSourceFiles();
+
+  // ==================== プロンプト修正 ====================
+  const promptQuestion = document.getElementById("prompt-question");
+  const promptAnswer = document.getElementById("prompt-answer");
+  const promptSaveBtn = document.getElementById("prompt-save-btn");
+  const promptSaveStatus = document.getElementById("prompt-save-status");
+
+  async function loadPrompts() {
+    try {
+      const data = await fetchJson(`/api/${ADMIN_TOKEN}/admin/prompts`);
+      if (promptQuestion) promptQuestion.value = data.question || "";
+      if (promptAnswer) promptAnswer.value = data.answer || "";
+    } catch (e) {
+      if (promptSaveStatus) {
+        promptSaveStatus.textContent = `読み込み失敗: ${e.message}`;
+        promptSaveStatus.style.color = "red";
+      }
+    }
+  }
+
+  if (promptSaveBtn) {
+    promptSaveBtn.addEventListener("click", async () => {
+      promptSaveBtn.disabled = true;
+      promptSaveStatus.textContent = "保存中…";
+      promptSaveStatus.style.color = "#666";
+      try {
+        const res = await fetch(`/api/${ADMIN_TOKEN}/admin/prompts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: promptQuestion ? promptQuestion.value : "",
+            answer: promptAnswer ? promptAnswer.value : "",
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || "保存に失敗しました。");
+        promptSaveStatus.textContent = "✓ 保存しました（以降の出題に反映されます）";
+        promptSaveStatus.style.color = "green";
+      } catch (e) {
+        promptSaveStatus.textContent = `✗ ${e.message}`;
+        promptSaveStatus.style.color = "red";
+      } finally {
+        promptSaveBtn.disabled = false;
+      }
+    });
+  }
 })();

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - 管理画面</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.10.0">
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.0">
 </head>
 <body>
   <div class="app-shell app-shell--wide">
@@ -14,16 +14,34 @@
         <h1>ビザ検定 - 管理画面</h1>
         <p id="app-version-slot" style="font-size:12px; color:#999; margin:0;"></p>
       </div>
-      <button type="button" id="inbox-btn" class="inbox-btn" title="チャレンジ対応を開く">
+    </header>
+
+    <!-- メニュー -->
+    <nav class="admin-nav" id="admin-nav">
+      <button type="button" class="admin-nav-btn is-active" data-view="users">受験者一覧</button>
+      <button type="button" class="admin-nav-btn" data-view="source">ソース管理</button>
+      <button type="button" class="admin-nav-btn" data-view="challenges">
         チャレンジ対応
         <span id="inbox-badge" class="inbox-badge" hidden>0</span>
       </button>
-    </header>
+      <button type="button" class="admin-nav-btn" data-view="prompts">プロンプト修正</button>
+    </nav>
 
     <div id="loading" class="loading">読み込み中…</div>
 
     <main id="content" style="display:none;">
-      <section class="card">
+      <!-- 受験者一覧 -->
+      <section class="card admin-view" id="view-users">
+        <h2>受験者一覧</h2>
+        <div id="users-area"></div>
+        <div id="history-card" style="display:none; margin-top:16px;">
+          <h3 id="history-title">受験履歴</h3>
+          <div id="history-area"></div>
+        </div>
+      </section>
+
+      <!-- ソース管理 -->
+      <section class="card admin-view" id="view-source" style="display:none;">
         <h2>ソース管理</h2>
         <div style="display:flex; flex-direction:column; gap:16px;">
           <div>
@@ -35,9 +53,7 @@
             </div>
             <div id="upload-status" style="margin-top:8px; font-size:13px;"></div>
           </div>
-
           <hr style="margin:0; border:none; border-top:1px solid #e0e0e0;">
-
           <div>
             <h3 style="margin-top:0;">保存されているファイル</h3>
             <div id="files-list" style="display:flex; flex-direction:column; gap:8px;">
@@ -47,30 +63,10 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>受験者一覧</h2>
-        <div id="users-area"></div>
-      </section>
-
-      <section class="card" id="history-card" style="display:none;">
-        <h2 id="history-title">受験履歴</h2>
-        <div id="history-area"></div>
-      </section>
-
-    </main>
-
-    <div id="error-area" class="card" style="display:none;">
-      <h2>読み込みエラー</h2>
-      <p id="error-message"></p>
-    </div>
-  </div>
-
-  <!-- チャレンジ対応モーダル -->
-  <div class="modal-overlay" id="challenges-modal" hidden>
-    <div class="modal-card modal-card--wide">
-      <div class="ch-modal-head">
-        <h2 style="margin:0;">チャレンジ対応</h2>
-        <span style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <!-- チャレンジ対応 -->
+      <section class="card admin-view" id="view-challenges" style="display:none;">
+        <div class="ch-modal-head">
+          <h2 style="margin:0;">チャレンジ対応</h2>
           <label class="muted" style="font-size:13px;">状態:
             <select id="challenge-status-filter">
               <option value="">すべて</option>
@@ -80,14 +76,38 @@
               <option value="rejected">却下</option>
             </select>
           </label>
-          <button type="button" id="challenges-close" class="btn btn-secondary" style="padding:6px 12px; font-size:13px;">閉じる</button>
-        </span>
-      </div>
-      <div id="challenges-area"><div class="loading">読み込み中…</div></div>
+        </div>
+        <div id="challenges-area"><div class="loading">読み込み中…</div></div>
+      </section>
+
+      <!-- プロンプト修正 -->
+      <section class="card admin-view" id="view-prompts" style="display:none;">
+        <h2>プロンプト修正</h2>
+        <p style="font-size:13px; color:#666;">問題生成の追加指示です。出題の骨組み（JSON形式）は固定のまま、ここに書いた方針が生成時に反映されます。空欄なら既定の動作になります。</p>
+        <div style="display:flex; flex-direction:column; gap:18px; margin-top:12px;">
+          <div>
+            <h3 style="margin:0 0 6px;">質問（問題文・選択肢）への追加指示</h3>
+            <textarea id="prompt-question" rows="8" style="width:100%; box-sizing:border-box; font-size:13px;" placeholder="例：選択肢は紛らわしくし、数値や条件を1つだけ変えた誤答を混ぜる。"></textarea>
+          </div>
+          <div>
+            <h3 style="margin:0 0 6px;">回答（解説）への追加指示</h3>
+            <textarea id="prompt-answer" rows="8" style="width:100%; box-sizing:border-box; font-size:13px;" placeholder="例：解説は2文以内で簡潔に。専門用語には短い補足を付ける。"></textarea>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <button type="button" id="prompt-save-btn" class="btn btn-primary" style="padding:8px 16px;">保存する</button>
+            <span id="prompt-save-status" style="font-size:13px;"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="error-area" class="card" style="display:none;">
+      <h2>読み込みエラー</h2>
+      <p id="error-message"></p>
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.10.0"></script>
+  <script src="/assets/common.js?v=1.11.0"></script>
   <script src="/assets/admin.js"></script>
 <footer style="display: flex; padding: 8px; font-size: 12px; border-top: 1px solid #eee;"></footer>
 </body>
