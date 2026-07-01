@@ -670,11 +670,15 @@
         level,
         unit,
         session_id: sessionId,
-        answers: questions.map((q, i) =>
-          q.type === "fill_in"
-            ? { id: q.id, text_answers: Array.isArray(answers[i]) ? answers[i] : [] }
-            : { id: q.id, choice: answers[i] }
-        ),
+        answers: questions.map((q, i) => {
+          if (q.type === "fill_in") {
+            return { id: q.id, text_answers: Array.isArray(answers[i]) ? answers[i] : [] };
+          }
+          if (q.type === "multi") {
+            return { id: q.id, choices: Array.isArray(answers[i]) ? answers[i] : [] };
+          }
+          return { id: q.id, choice: answers[i] };
+        }),
       };
       const res = await fetch("/api/quiz/submit", {
         method: "POST",
@@ -683,7 +687,15 @@
       });
       if (!res.ok) {
         let detail = "";
-        try { detail = (await res.json()).detail || ""; } catch (_) {}
+        try {
+          const j = await res.json();
+          if (Array.isArray(j.detail)) {
+            // FastAPI のバリデーションエラーは配列で返る。読める文言にまとめる。
+            detail = j.detail.map((d) => d.msg || JSON.stringify(d)).join(" / ");
+          } else {
+            detail = j.detail || "";
+          }
+        } catch (_) {}
         throw new Error(detail || `採点リクエストが失敗しました (HTTP ${res.status})`);
       }
       const result = await res.json();
