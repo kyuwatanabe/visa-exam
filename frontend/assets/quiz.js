@@ -148,20 +148,29 @@
 
   async function loadTail() {
     try {
-      const res = await fetch("/api/rag/quiz/continue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId }),
-      });
-      if (!res.ok) {
-        let detail = "";
-        try { detail = (await res.json()).detail || ""; } catch (_) {}
-        throw new Error(detail || `残りの問題の生成に失敗 (HTTP ${res.status})`);
+      // テイルはサーバー側で数問ずつに分割生成される。pending が尽きるまで繰り返し取得する。
+      // 1バッチ取得するごとに questions へ追記し、届いた分から解けるようにする。
+      for (let guard = 0; guard < 20; guard++) {
+        const res = await fetch("/api/rag/quiz/continue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        if (!res.ok) {
+          let detail = "";
+          try { detail = (await res.json()).detail || ""; } catch (_) {}
+          throw new Error(detail || `残りの問題の生成に失敗 (HTTP ${res.status})`);
+        }
+        const data = await res.json();
+        const tail = data.questions || [];
+        if (tail.length) {
+          questions = questions.concat(tail);
+          render();
+        }
+        if (data.gen_metrics) genMetrics = data.gen_metrics;
+        // 残りが無くなったら完了
+        if ((data.pending_count || 0) === 0) break;
       }
-      const data = await res.json();
-      const tail = data.questions || [];
-      questions = questions.concat(tail);
-      if (data.gen_metrics) genMetrics = data.gen_metrics;
       tailLoaded = true;
       tailError = null;
       render();
@@ -572,14 +581,21 @@
     const target = currentIdx + 1;
     if (target >= totalExpected) return;
 
-    // 次問がまだ生成できていない（テイル未着）なら、ここで待つ
+    // 次問がまだ生成できていない（テイル未着）なら、次問が届くまで待つ。
+    // テイルはバッチで順次届くので、ensureTail を走らせつつ次問の到着をポーリングする。
     if (target >= questions.length) {
       const prevLabel = nextBtn.textContent;
       nextBtn.disabled = true;
       nextBtn.textContent = "問題を準備中…";
-      const ok = await ensureTail();
+      ensureTail();  // 進行中でなければ開始（fire-and-forget）
+      // 次問が届く or テイル完了/失敗 まで待つ
+      for (let i = 0; i < 120; i++) {
+        if (target < questions.length) break;
+        if (tailLoaded || tailError) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
       nextBtn.textContent = prevLabel;
-      if (!ok || target >= questions.length) {
+      if (target >= questions.length) {
         nextBtn.disabled = false;
         alert(tailError || "残りの問題をまだ準備できていません。少し待って再度お試しください。");
         return;

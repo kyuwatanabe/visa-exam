@@ -198,6 +198,7 @@ def rag_quiz_continue(req: RagContinueRequest):
         return {
             "session_id": req.session_id,
             "questions": [],
+            "pending_count": 0,
             "gen_metrics": session.get("meta", {}),
         }
 
@@ -208,12 +209,19 @@ def rag_quiz_continue(req: RagContinueRequest):
         return {
             "session_id": req.session_id,
             "questions": [],
+            "pending_count": len(pend_perspectives),
             "gen_metrics": session.get("meta", {}),
         }
 
+    # 1回の continue では先頭 RAG_TAIL_BATCH 問だけ生成し、残りは pending に戻す。
+    # これで1回の生成を小さく保ち、フロントは pending が尽きるまで繰り返し呼ぶ。
+    batch = max(1, RAG_TAIL_BATCH)
+    this_chunk = pend_perspectives[:batch]
+    rest = pend_perspectives[batch:]
+
     try:
         gen = rag_generator.generate_questions(
-            session["level"], session["unit_id"], pend_perspectives
+            session["level"], session["unit_id"], this_chunk
         )
     except rag_generator.RAGGenerationError as e:
         # 生成失敗時は pending を復元し、フロントの再試行で再生成できるようにする
@@ -226,9 +234,12 @@ def rag_quiz_continue(req: RagContinueRequest):
 
     merged = rag_generator.merge_metrics(session.get("meta", {}), gen["metrics"])
     public = rag_session_store.append_tail_questions(session, gen["questions"], merged)
+    # 残りの観点で pending を更新（残があれば claim 可能な状態に戻す）。
+    rag_session_store.set_pending(req.session_id, rest)
     return {
         "session_id": req.session_id,
         "questions": public,
+        "pending_count": len(rest),
         "gen_metrics": merged,
     }
 

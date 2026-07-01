@@ -20,6 +20,7 @@ from backend.config import (
     RAG_CHOICES,
     RAG_MAX_TOKENS,
     RAG_MAX_TOKENS_MULTI,
+    RAG_TAIL_BATCH,
     RAG_MODEL,
     YESNO_CHOICES,
 )
@@ -519,20 +520,46 @@ def generate_questions(
     llm_call: Optional[LLMCall] = None,
     max_retries: int = 2,
 ) -> dict:
-    """与えられた観点リストから問題を生成する（サンプリングは呼び出し側の責務）。
+    """観点リストから問題を生成する（バッチ外殻）。
 
-    ヘッド／テイル分割（開始の体感待ち短縮）のため、サンプリングと生成を分離した。
+    観点数が多い（＝1回の生成が重い）場合は、RAG_TAIL_BATCH 問ずつに分割して
+    複数回生成し、結果を結合して返す。1回のLLM出力を小さく保ち、出力上限超過や
+    時間切れ（「問題を準備中」で固まる）を防ぐ。
+    """
+    batch = max(1, RAG_TAIL_BATCH)
+    if len(perspectives) <= batch:
+        return _generate_questions_batch(
+            level, unit_id, perspectives, seed=seed,
+            llm_call=llm_call, max_retries=max_retries,
+        )
+    all_questions: List[dict] = []
+    merged_metrics: dict = {}
+    for start in range(0, len(perspectives), batch):
+        chunk = perspectives[start:start + batch]
+        # seed はチャンクごとにずらして観点割り当ての乱数を変える
+        chunk_seed = None if seed is None else seed + start
+        part = _generate_questions_batch(
+            level, unit_id, chunk, seed=chunk_seed,
+            llm_call=llm_call, max_retries=max_retries,
+        )
+        all_questions.extend(part["questions"])
+        merged_metrics = merge_metrics(merged_metrics, part.get("metrics", {}))
+    return {"questions": all_questions, "metrics": merged_metrics}
+
+
+def _generate_questions_batch(
+    level: str,
+    unit_id: str,
+    perspectives: List[dict],
+    seed: Optional[int] = None,
+    llm_call: Optional[LLMCall] = None,
+    max_retries: int = 2,
+) -> dict:
+    """与えられた観点リストから問題を生成する（1バッチ＝1回のLLM呼び出し）。
+
     渡された観点ちょうどの数だけ問題を返す（多く返ってきたら先頭で切り詰める）。
-    原本テキストはこの観点群の source_pages から都度組み立てる。
+    原本テキストはこの観点群から都度組み立てる。
 
-    ただし LLM 呼び出しの経路自体は本番と同一（配線の動作確認を兼ねる）。
-
-    Args:
-        seed: メトリクス記録用に渡された seed をそのまま載せるだけ（生成には未使用）。
-
-    Returns:
-        {"questions": [...], "metrics": {...}}
-        questions は answer/explanation を含む内部形式。
     Raises:
         RAGGenerationError: 観点メタ不在・観点0件・API未設定・検証失敗の最終リトライ超過など。
     """

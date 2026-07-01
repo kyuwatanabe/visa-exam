@@ -73,6 +73,9 @@ RAG_QUESTIONS_PER_QUIZ = int(os.environ.get("RAG_QUESTIONS_PER_QUIZ", "10"))
 # 残りはユーザーが解いている間に /api/rag/quiz/continue で生成・追記する。
 # 1 にすると、開始時の待ちが「1問分」だけになり体感が最短になる。
 RAG_HEAD_COUNT = int(os.environ.get("RAG_HEAD_COUNT", "1"))
+# テイル（残り問題）は1回の continue で最大この問数ずつ生成する。
+# 大きすぎると1回の生成が重く（出力上限超過・時間切れ）なるため小さめに分割する。
+RAG_TAIL_BATCH = int(os.environ.get("RAG_TAIL_BATCH", "2"))
 RAG_SESSION_TTL_SEC = int(os.environ.get("RAG_SESSION_TTL_SEC", "7200"))  # セッション保持（既定2時間）
 
 # --- DEV ONLY（撤去予定）: 管理画面確認用デモデータ生成ボタン -----------------
