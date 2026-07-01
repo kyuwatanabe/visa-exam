@@ -36,7 +36,7 @@ VISA_TYPE_UNITS = frozenset(
 # --- RAG出題方式の設定 ---
 # ANTHROPIC_API_KEY 未設定なら RAG 出題は 503 を返す。
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-RAG_MODEL = os.environ.get("RAG_MODEL", "claude-haiku-4-5-20251001")
+RAG_MODEL = os.environ.get("RAG_MODEL", "claude-sonnet-4-6")
 RAG_CHOICES = int(os.environ.get("RAG_CHOICES", "3"))            # 1問あたりの選択肢数（3 or 4）
 
 # レベル別の出題形式（項目5）。
