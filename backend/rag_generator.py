@@ -87,15 +87,19 @@ def _build_user_prompt(
         lines.append("")
         if multi_assignments:
             lines.append(
-                "# 各設問の選択肢に割り当てる観点（この割り当て通りに作る）\n"
-                "各設問は、下に列挙した観点から選択肢を1つずつ作る。"
-                "選択肢の順番は観点の順番に対応させる。"
+                "# 各設問の選択肢の作り方（この指示通りに作る）\n"
+                "各設問は、下の指示通りに選択肢を1つずつ作る。"
+                "選択肢の順番は下の順番に対応させる。"
+                "「正しい記述」は原本に照らして正しい内容、"
+                "「誤った記述」は一見もっともらしいが原本に照らすと誤りの内容にする。"
             )
             for qi, assigned in enumerate(multi_assignments, 1):
                 lines.append(f"\n## 設問{qi}")
-                for ci, p in enumerate(assigned, 1):
+                for ci, a in enumerate(assigned, 1):
+                    p = a.get("perspective", {})
+                    verdict = "正しい記述にする" if a.get("should_be_correct") else "誤った記述にする"
                     lines.append(
-                        f"- 選択肢{ci}（観点: {p.get('name','')}）: {p.get('summary','')}"
+                        f"- 選択肢{ci}（観点: {p.get('name','')} / {verdict}）: {p.get('summary','')}"
                     )
             lines.append("")
         # perspective_id 用に、代表として使える観点idを列挙
@@ -149,26 +153,23 @@ def _build_user_prompt(
             '{ "questions": [ { "perspective_id": "観点id", '
             '"question": "正しいものを1つ、または2つ選びなさい。", '
             '"choice_items": [ '
-            '{ "text": "選択肢の記述文", "correct": true, "reason": "正しい/誤りの理由（理由だけ。文頭に『正しい』『誤り』とは書かない）" } '
+            '{ "text": "選択肢の記述文", "correct": true, "reason": "その判定の理由（理由だけ。文頭に『正しい』『誤り』とは書かない）" } '
             f'… 全{n_choices}個 ], '
             '"source_pages": [21] } ] }\n'
             "## 最重要ルール（必ず守る）\n"
             "- **設問文（question）は必ず「正しいものを1つ、または2つ選びなさい。」だけにする。"
             "特定の話題を設問文に付けてはならない。**\n"
-            f"- **choice_items はちょうど {n_choices} 個。各要素は、上の『各設問の選択肢に"
-            "割り当てる観点』の割り当て通りに、観点1つにつき1個作る（順番＝観点の順）。**\n"
-            "- 各要素の text は、割り当てられた観点の内容に基づく記述文。"
-            "correct が true なら『原本に照らして正しい記述』、false なら"
-            "『一見もっともらしいが原本に照らすと誤りの記述』にする。\n"
-            "- **correct と text と reason は必ず整合させる。"
-            "correct=true の text は正しい内容、correct=false の text は誤った内容にし、"
-            "reason はその判定の理由にする（矛盾させない）。**\n"
-            f"- 各設問で、correct=true をちょうど1〜2個にし、残りは false にする"
-            "（全部 true や全部 false は禁止）。\n"
-            "- 設問ごとに true の個数（1個か2個か）と位置をばらつかせる。\n"
+            f"- **choice_items はちょうど {n_choices} 個。各要素は、上の『各設問の選択肢の"
+            "作り方』の指示通りに作る（順番も一致させる）。**\n"
+            "- **『正しい記述にする』と指示された選択肢は correct を true にし、text を"
+            "原本に照らして正しい内容にする。『誤った記述にする』と指示された選択肢は"
+            "correct を false にし、text を一見もっともらしいが誤った内容にする。"
+            "指示された正誤（true/false の個数と位置）を必ずその通りにする。**\n"
+            "- text・correct・reason は必ず整合させる（correct=true なら正しい内容、"
+            "false なら誤った内容、reason はその理由）。\n"
             "## その他のルール\n"
-            "- reason は理由だけを1文で簡潔に書く（文頭に『正しい』『誤り』と書かない。"
-            "正誤は correct で表す）。原本に基づくこと。\n"
+            "- reason は理由だけを1文で簡潔に書く（文頭に『正しい』『誤り』と書かない）。"
+            "原本に基づくこと。\n"
             "- 設問文は必ず「正しいものを1つ、または2つ選びなさい。」とする。\n"
             "- perspective_id は『perspective_id に使える観点id』のいずれかを入れる。\n"
             "**原本の文をそのまま引用したり「原本p.◯に『…』と記されており」のような引用形式で"
@@ -314,17 +315,22 @@ def _validate_fill_in(i: int, q: dict) -> dict:
     }
 
 
-def _validate_multi(i: int, q: dict, expected_choices: int, unit_name: str = "") -> dict:
+def _validate_multi(
+    i: int,
+    q: dict,
+    expected_choices: int,
+    unit_name: str = "",
+    truth: Optional[List[bool]] = None,
+) -> dict:
     """複数選択（上級）の1問を検証し、内部形式に正規化する。
 
-    choice_items（text/correct/reason を1組）方式を優先。正解位置は correct
-    フラグから導出するため、採点・表示・解説が必ず整合する。
-    旧 answer_indices+choices+choice_explanations 方式もフォールバックで受ける。
+    choice_items（text/correct/reason を1組）方式を優先。正解位置は、サーバーが
+    事前決定した truth（各選択肢の正誤目標）があればそれを採用し、無ければ
+    LLMの correct フラグから導出する。これにより正解数（1〜2個）が必ず保証される。
     設問文は単元名を用いた固定文に強制上書きする。
     """
     items = q.get("choice_items")
     if isinstance(items, list) and items:
-        # 新方式: choice_items から choices / correct / reasons を取り出す
         if len(items) != expected_choices:
             raise ValueError(
                 f"questions[{i}].choice_items は {expected_choices} 個必要（実際 {len(items)}）"
@@ -339,10 +345,14 @@ def _validate_multi(i: int, q: dict, expected_choices: int, unit_name: str = "")
             choices.append(text.strip())
             corrects.append(bool(it.get("correct")))
             reasons.append((it.get("reason") or "").strip())
-        norm = sorted([j for j, c in enumerate(corrects) if c])
+        # 正解位置: サーバー事前決定の truth を最優先（個数保証）。無ければLLMのcorrect。
+        if truth and len(truth) == expected_choices:
+            norm = sorted([j for j, t in enumerate(truth) if t])
+        else:
+            norm = sorted([j for j, c in enumerate(corrects) if c])
         if not (1 <= len(norm) <= 2):
             raise ValueError(
-                f"questions[{i}] の correct=true は1〜2個であること（実際 {len(norm)}個）"
+                f"questions[{i}] の正解は1〜2個であること（実際 {len(norm)}個）"
             )
         choice_explanations = reasons
     else:
@@ -395,7 +405,13 @@ def _validate_multi(i: int, q: dict, expected_choices: int, unit_name: str = "")
     }
 
 
-def _parse_and_validate(raw: str, fmt: str, expected_choices: int, unit_name: str = "") -> List[dict]:
+def _parse_and_validate(
+    raw: str,
+    fmt: str,
+    expected_choices: int,
+    unit_name: str = "",
+    multi_truth: Optional[List[List[bool]]] = None,
+) -> List[dict]:
     """LLM応答JSONをパースし、出題形式 fmt に応じて検証・正規化する。不正なら ValueError。"""
     data = json.loads(_strip_fences(raw))
     questions = data.get("questions")
@@ -410,7 +426,8 @@ def _parse_and_validate(raw: str, fmt: str, expected_choices: int, unit_name: st
         elif fmt == "fill_in":
             out.append(_validate_fill_in(i, q))
         elif fmt == "multi":
-            out.append(_validate_multi(i, q, expected_choices, unit_name))
+            truth = multi_truth[i] if (multi_truth and i < len(multi_truth)) else None
+            out.append(_validate_multi(i, q, expected_choices, unit_name, truth))
         else:
             out.append(_validate_choice(i, q, expected_choices))
     return out
@@ -491,7 +508,25 @@ def generate_questions(
             else:
                 # 観点が足りない場合は重複を許して埋める
                 picked = [rng.choice(pool) for _ in range(n_choices)]
-            multi_assignments.append(picked)
+            # この設問の正解数（1 or 2）と、正解にする選択肢位置をサーバー側で確定する。
+            # これによりLLMに個数を守らせる必要がなくなり、生成が安定する。
+            k = rng.choice([1, 2])
+            correct_positions = set(rng.sample(range(n_choices), k))
+            assigned = []
+            for idx, p in enumerate(picked):
+                assigned.append({
+                    "perspective": p,
+                    "should_be_correct": idx in correct_positions,
+                })
+            multi_assignments.append(assigned)
+
+    # 各設問の正誤目標（truth）を割り当てから抽出。検証時の正解確定に使う。
+    multi_truth = None
+    if multi_assignments:
+        multi_truth = [
+            [bool(a.get("should_be_correct")) for a in assigned]
+            for assigned in multi_assignments
+        ]
 
     user_prompt = _build_user_prompt(
         level=level,
@@ -527,7 +562,9 @@ def generate_questions(
         attempts_used = attempt + 1
         try:
             raw, usage = call(system_blocks, user_prompt)
-            parsed = _parse_and_validate(raw, fmt, n_choices, meta.get("unit_name", unit_id))
+            parsed = _parse_and_validate(
+                raw, fmt, n_choices, meta.get("unit_name", unit_id), multi_truth
+            )
             if len(parsed) < want:
                 # 要求した観点数に満たない生成は無音で通さずリトライ対象にする
                 raise ValueError(
