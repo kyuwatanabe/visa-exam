@@ -63,6 +63,7 @@ def _build_user_prompt(
     perspectives: List[dict],
     fmt: str,
     n_choices: int,
+    unit_perspectives: Optional[List[dict]] = None,
 ) -> str:
     """LLMへ渡すユーザープロンプトを組み立てる（出題形式 fmt で出力スキーマを切替）。
 
@@ -84,6 +85,14 @@ def _build_user_prompt(
             f"- {p['id']}: {p['name']} / {p.get('summary','')} / 根拠ページ {pages}"
         )
     lines.append("")
+
+    # 上級（multi）は、5つの選択肢を単元全体の異なる論点から作るため、
+    # 単元の全論点一覧を提示して素材を与える。
+    if fmt == "multi" and unit_perspectives:
+        lines.append("# この単元の論点一覧（選択肢はこの中の異なる複数の論点から作る）")
+        for p in unit_perspectives:
+            lines.append(f"- {p.get('name','')}: {p.get('summary','')}")
+        lines.append("")
 
     if fmt == "yesno":
         lines.append(
@@ -136,9 +145,12 @@ def _build_user_prompt(
             f"- choice_explanations は choices と同じ {n_choices} 個。各選択肢について、"
             "それが正しいか誤りかを明示し、その理由を原本に基づき1文で簡潔に述べる"
             "（例:『正しい。○○だから。』『誤り。実際は○○のため。』）。\n"
-            "- **5つの選択肢は同じ一点に集中させず、この単元に関わる複数の異なる論点"
-            "（用途・要件・対象者・期間・例外・他ビザとの違いなど）から作り、単元全体を"
-            "広くカバーする内容にする。**\n"
+            "- **各設問の5つの選択肢は、上の『この単元の論点一覧』にある"
+            "互いに異なる複数の論点から1つずつ作ること。5つとも同じ論点"
+            "（例: B-1 industrial worker だけ）に偏らせてはならない。"
+            "用途・要件・対象者・期間・例外・他ビザとの違い・VWPとの関係など、"
+            "単元全体を広くカバーする。**\n"
+            "- perspective_id は設問の代表的な観点idを入れればよい（選択肢は複数論点から作る）。\n"
             "**原本の文をそのまま引用したり「原本p.◯に『…』と記されており」のような引用形式で"
             "書いたりしてはならない。ページ番号への言及も不要。**"
         )
@@ -420,6 +432,7 @@ def generate_questions(
         perspectives=perspectives,
         fmt=fmt,
         n_choices=n_choices,
+        unit_perspectives=meta.get("perspectives", []),
     )
     # システムブロック: 指示は静的。原本テキストは大きく同一単元の連続生成で
     # 使い回せるため、キャッシュ対象（ephemeral）ブロックとして置く。
