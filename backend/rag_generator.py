@@ -19,12 +19,13 @@ from backend.config import (
     QUESTION_FORMAT_BY_LEVEL,
     RAG_CHOICES,
     RAG_MAX_TOKENS,
+    RAG_MAX_TOKENS_MULTI,
     RAG_MODEL,
     YESNO_CHOICES,
 )
 
 # LLM呼び出しの戻り値: (本文テキスト, usage: {"input_tokens": int, "output_tokens": int})
-LLMCall = Callable[[list, str], Tuple[str, dict]]
+LLMCall = Callable[..., Tuple[str, dict]]
 
 _SYSTEM_INSTRUCTIONS = (
     "あなたは米国ビザ実務の検定問題を作成する専門家。"
@@ -190,7 +191,7 @@ def _build_user_prompt(
     return "\n".join(lines)
 
 
-def _real_llm_call(system_blocks: list, user_text: str) -> Tuple[str, dict]:
+def _real_llm_call(system_blocks: list, user_text: str, max_tokens: int = RAG_MAX_TOKENS) -> Tuple[str, dict]:
     """Anthropic Messages API を実呼び出しする。プロンプトキャッシュ利用。"""
     if not ANTHROPIC_API_KEY:
         raise RAGGenerationError(
@@ -201,7 +202,7 @@ def _real_llm_call(system_blocks: list, user_text: str) -> Tuple[str, dict]:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     resp = client.messages.create(
         model=RAG_MODEL,
-        max_tokens=RAG_MAX_TOKENS,
+        max_tokens=max_tokens,
         system=system_blocks,
         messages=[{"role": "user", "content": user_text}],
     )
@@ -560,6 +561,7 @@ def generate_questions(
         )
 
     call = llm_call or _real_llm_call
+    max_tokens = RAG_MAX_TOKENS_MULTI if fmt == "multi" else RAG_MAX_TOKENS
 
     start = time.monotonic()
     usage = {"input_tokens": None, "output_tokens": None}
@@ -569,7 +571,7 @@ def generate_questions(
     for attempt in range(max_retries + 1):
         attempts_used = attempt + 1
         try:
-            raw, usage = call(system_blocks, user_prompt)
+            raw, usage = call(system_blocks, user_prompt, max_tokens)
             parsed = _parse_and_validate(
                 raw, fmt, n_choices, meta.get("unit_name", unit_id), multi_truth
             )
