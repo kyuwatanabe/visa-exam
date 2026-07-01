@@ -345,20 +345,57 @@ def _validate_multi(
             truth = [j in pos for j in range(expected_choices)]
 
         choices, reasons = [], []
+        actual_truth: List[bool] = []  # 実際に使った版に合わせた正誤
         for j, it in enumerate(items):
             if not isinstance(it, dict):
                 raise ValueError(f"questions[{i}].choice_items[{j}] が dict でない")
-            if truth[j]:
-                text = it.get("true_text")
-                reason = it.get("true_reason") or ""
+            true_text = (it.get("true_text") or "").strip()
+            false_text = (it.get("false_text") or "").strip()
+            true_reason = (it.get("true_reason") or "").strip()
+            false_reason = (it.get("false_reason") or "").strip()
+            want_true = bool(truth[j])
+            # 割り当てた版を優先。欠けていれば、もう片方の版を使い正誤を実態に合わせる。
+            if want_true and true_text:
+                text, reason, used_true = true_text, true_reason, True
+            elif (not want_true) and false_text:
+                text, reason, used_true = false_text, false_reason, False
+            elif true_text:  # フォールバック（正しい版のみある）
+                text, reason, used_true = true_text, true_reason, True
+            elif false_text:  # フォールバック（誤り版のみある）
+                text, reason, used_true = false_text, false_reason, False
             else:
-                text = it.get("false_text")
-                reason = it.get("false_reason") or ""
-            if not isinstance(text, str) or not text.strip():
-                raise ValueError(f"questions[{i}].choice_items[{j}] の記述文が不正")
-            choices.append(text.strip())
-            reasons.append(reason.strip())
-        norm = sorted([j for j, t in enumerate(truth) if t])
+                raise ValueError(
+                    f"questions[{i}].choice_items[{j}] に有効な記述文がない"
+                )
+            choices.append(text)
+            reasons.append(reason)
+            actual_truth.append(used_true)
+
+        # 実態の正誤で正解位置を確定。1〜2個の範囲に収まるよう調整する。
+        correct_idx = [j for j, t in enumerate(actual_truth) if t]
+        if len(correct_idx) == 0:
+            # 正解が0個: 正しい版が使える選択肢を1つ正解に昇格
+            for j, it in enumerate(items):
+                tt = (it.get("true_text") or "").strip()
+                if tt:
+                    choices[j] = tt
+                    reasons[j] = (it.get("true_reason") or "").strip()
+                    actual_truth[j] = True
+                    break
+        elif len(correct_idx) > 2:
+            # 正解が3個以上: 先頭2個だけ正解に残し、他は誤り版に差し替え
+            keep = set(correct_idx[:2])
+            for j in correct_idx[2:]:
+                ft = (items[j].get("false_text") or "").strip()
+                if ft:
+                    choices[j] = ft
+                    reasons[j] = (items[j].get("false_reason") or "").strip()
+                    actual_truth[j] = False
+                # 誤り版が無ければ正解のまま（稀）。keepに含める
+                elif j not in keep:
+                    keep.add(j)
+
+        norm = sorted([j for j, t in enumerate(actual_truth) if t])
         if not (1 <= len(norm) <= 2):
             raise ValueError(
                 f"questions[{i}] の正解は1〜2個であること（実際 {len(norm)}個）"
