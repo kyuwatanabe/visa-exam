@@ -108,10 +108,11 @@ function mountHeaderNav(active, opts) {
   header.appendChild(nav);
 }
 
-// 正答率(%) → スコアピルのCSSクラス
+// 正答率(%) → スコアピルのCSSクラス（管理画面 rateClass と同基準に統一）
+//   緑(high): 満点 / 黄(mid): 61〜99% / 赤(low): 60%以下
 function pillClass(pct) {
-  if (pct >= 80) return "high";
-  if (pct >= 60) return "mid";
+  if (pct >= 100) return "high";
+  if (pct >= 61) return "mid";
   return "low";
 }
 
@@ -125,7 +126,7 @@ const CHALLENGE_STATUS_LABEL = {
 
 // バージョン表示。#app-title があればその右に、無ければ画面上部右に出す。
 function initVersionDisplay() {
-  const version = "v1.7.1";
+  const version = "v1.7.2";
   if (document.getElementById("app-version")) return;  // 二重表示防止
   const versionEl = document.createElement("span");
   versionEl.id = "app-version";

@@ -32,6 +32,10 @@ _SYSTEM_INSTRUCTIONS = (
     "原本・観点にない事実・数値・条文・呼称・訳語を創作してはならない。"
     "特にビザ種別の名称・通称は原本の表記をそのまま使い、原本にない言い換え"
     "（例: 原本にない『研修者』等の語）を付け加えない。"
+    "**原本に『通常』『原則』『多くの場合』『一般に』などの限定・留保の表現が付いている"
+    "事項は、その限定表現を必ず残す。限定を削って断定文（『必ず』『常に』『〜に限定される』"
+    "等）に変えてはならない。例: 原本が『通常B-1 in lieu of Hは有効期間が半年または1年に"
+    "限定されます』なら、問題文・選択肢・解説でも『通常』を保持する。**"
     "難度は指定レベルに厳密に合わせる。"
     "解説は根拠を自分の言葉で1〜2文で簡潔に述べる。原本の文の引用やページ番号への言及はしない。"
     "出力は指定のJSONのみ。前後の説明文やMarkdownのコードフェンスを一切付けない。"
@@ -131,7 +135,10 @@ def _build_user_prompt(
             "- 設問文は必ず「正しいものを1つ、または2つ選びなさい。」とする。\n"
             f"- choice_explanations は choices と同じ {n_choices} 個。各選択肢について、"
             "それが正しいか誤りかを明示し、その理由を原本に基づき1文で簡潔に述べる"
-            "（例:『正しい。○○だから。』『誤り。実際は○○のため。』）。"
+            "（例:『正しい。○○だから。』『誤り。実際は○○のため。』）。\n"
+            "- **5つの選択肢は同じ一点に集中させず、この単元に関わる複数の異なる論点"
+            "（用途・要件・対象者・期間・例外・他ビザとの違いなど）から作り、単元全体を"
+            "広くカバーする内容にする。**\n"
             "**原本の文をそのまま引用したり「原本p.◯に『…』と記されており」のような引用形式で"
             "書いたりしてはならない。ページ番号への言及も不要。**"
         )
@@ -395,7 +402,15 @@ def generate_questions(
             frag = frag.strip()
             if len(frag) >= 2:
                 keywords.append(frag)
-    source_text = rag_source.text_for_keywords(keywords, max_pages=8)
+    # 上級（multi）は選択肢を単元全体の多様な論点から作るため、
+    # 出題観点だけでなく単元の全観点名も検索キーワードに加えて原本を広く引く。
+    max_pages = 8
+    if fmt == "multi":
+        for p in meta.get("perspectives", []):
+            if p.get("name"):
+                keywords.append(p["name"])
+        max_pages = 12
+    source_text = rag_source.text_for_keywords(keywords, max_pages=max_pages)
     grounding = "pdf" if source_text else "summary"
 
     user_prompt = _build_user_prompt(
