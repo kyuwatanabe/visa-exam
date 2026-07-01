@@ -35,6 +35,21 @@ app.add_middleware(
 rag_perspectives.load()   # 観点メタ（perspectives/*.json）をメモリへ
 db.init_db()              # SQLite スキーマ初期化
 
+# プロンプト版数が上がっていたら、旧プロンプトで作った在庫を作り直す。
+try:
+    from backend.config import PROMPT_VERSION
+    prev = db.get_setting("prompt_version")
+    if prev != PROMPT_VERSION:
+        n = db.pool_clear_all()
+        db.set_setting("prompt_version", PROMPT_VERSION)
+        import logging
+        logging.getLogger("uvicorn.error").info(
+            "prompt version %s -> %s: cleared %s pooled sets", prev, PROMPT_VERSION, n
+        )
+except Exception as _pv_err:  # noqa: BLE001
+    import logging
+    logging.getLogger("uvicorn.error").warning("prompt-version check skipped: %s", _pv_err)
+
 # 事前生成プールの補充ワーカーを起動（バックグラウンドで各単元の在庫を維持）。
 # 生成の遅さ・失敗はここに隔離され、検定開始はプールからの即時払い出しになる。
 try:

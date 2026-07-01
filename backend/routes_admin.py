@@ -385,7 +385,13 @@ async def admin_set_prompts(token: str, request: Request):
         raise HTTPException(400, "追加指示が長すぎます（各5000文字以内）。")
     db.set_setting(PROMPT_KEY_QUESTION, question)
     db.set_setting(PROMPT_KEY_ANSWER, answer)
-    return {"ok": True, "question": question, "answer": answer}
+    # プロンプトが変わったら、旧プロンプトで作った在庫は捨てて作り直す。
+    cleared = 0
+    try:
+        cleared = db.pool_clear_all()
+    except Exception:
+        pass
+    return {"ok": True, "question": question, "answer": answer, "pool_cleared": cleared}
 async def admin_upload_source(token: str, file: UploadFile = File(...)):
     """PDF をアップロードして、自動的にテキストに変換する。
 

@@ -832,6 +832,13 @@ def pool_cleanup_claimed(older_than_iso: str) -> int:
         return cur.rowcount or 0
 
 
+def pool_clear_all() -> int:
+    """プールの全セットを削除する（プロンプト変更後に古い在庫を作り直す用）。削除件数を返す。"""
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM quiz_pool")
+        return cur.rowcount or 0
+
+
 # --- アプリ設定（プロンプト等） ------------------------------------------------
 
 def get_setting(key: str) -> Optional[str]:

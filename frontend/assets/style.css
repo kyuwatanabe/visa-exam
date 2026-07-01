@@ -1398,3 +1398,119 @@ code {
 }
 .sel-card-title { font-size: 15px; }
 .sel-card-sub { font-size: 12px; font-weight: 500; }
+
+/* ===== 問題選択（ステップ式） ===== */
+.pick {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+.pick-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pick-step {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pick-title {
+  margin: 0;
+  font-size: 17px;
+  color: var(--text);
+  letter-spacing: .02em;
+}
+.pick-chosen {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.pick-body { display: flex; flex-direction: column; gap: 10px; }
+.pick-hint { color: var(--muted); font-size: 14px; margin: 4px 0; }
+
+/* 選択肢（単元・難易度共通の行ボタン） */
+.opt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .12s, background .12s, box-shadow .12s;
+}
+.opt:hover { border-color: var(--primary); background: #f7f9fc; }
+.opt.is-selected {
+  border-color: var(--primary);
+  background: var(--primary);
+  box-shadow: 0 2px 8px rgba(30,58,95,.18);
+}
+.opt.is-selected .opt-name,
+.opt.is-selected .opt-idx,
+.opt.is-selected .lvl-status { color: #fff; }
+.opt.is-selected .opt-idx { border-color: rgba(255,255,255,.5); }
+.opt.is-selected .lvl-status--done { color: #fff; }
+.opt.is-selected .opt-check { opacity: 1; color: var(--accent); }
+
+.opt-idx {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-variant-numeric: tabular-nums;
+}
+.opt-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.opt-check {
+  margin-left: auto;
+  font-size: 18px;
+  color: var(--primary);
+  opacity: 0;
+  transition: opacity .12s;
+}
+.lvl-status {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.lvl-status--done { color: #2f855a; font-weight: 600; }
+.opt--level .opt-check { margin-left: 12px; }
+
+/* 開始 */
+.pick-start {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.pick-start-btn { padding: 12px 28px; font-size: 15px; }
+.pick-start-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 難易度セクションは単元選択まで少し控えめに */
+#level-section { opacity: .55; transition: opacity .2s; }
+#level-section.is-active { opacity: 1; }

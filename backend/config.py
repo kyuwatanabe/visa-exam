@@ -53,6 +53,9 @@ def required_streak_for(unit_id: str) -> int:
 # ANTHROPIC_API_KEY 未設定なら RAG 出題は 503 を返す。
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 RAG_MODEL = os.environ.get("RAG_MODEL", "claude-sonnet-4-6")
+# 出題プロンプトの版数。プロンプト（語尾・方針など）を変えたらこの値を上げると、
+# 起動時に古いプール在庫を作り直す（古い語尾の問題が残らないようにする）。
+PROMPT_VERSION = "2"  # v1.11.3: 設問文をです・ます調に
 RAG_CHOICES = int(os.environ.get("RAG_CHOICES", "3"))            # 1問あたりの選択肢数（3 or 4）
 
 # レベル別の出題形式（項目5）。

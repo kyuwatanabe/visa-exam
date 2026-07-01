@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>問題選択 - ビザ検定</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.11.2">
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.3">
 </head>
 <body>
   <div class="app-shell">
@@ -18,24 +18,30 @@
     <div id="loading" class="loading">読み込み中…</div>
 
     <div id="content" style="display:none;">
-      <!-- 難易度 -->
-      <section class="card">
-        <h2>難易度を選ぶ</h2>
-        <div class="sel-grid" id="level-list"></div>
+      <section class="pick">
+        <div class="pick-head">
+          <span class="pick-step">1</span>
+          <h2 class="pick-title">単元を選ぶ</h2>
+          <span class="pick-chosen" id="unit-chosen"></span>
+        </div>
+        <div class="pick-body" id="unit-list"></div>
       </section>
 
-      <!-- 単元 -->
-      <section class="card">
-        <h2>単元を選ぶ</h2>
-        <div id="unit-list"><div class="muted">難易度を選ぶと単元が表示されます</div></div>
+      <section class="pick" id="level-section">
+        <div class="pick-head">
+          <span class="pick-step">2</span>
+          <h2 class="pick-title">難易度を選ぶ</h2>
+          <span class="pick-chosen" id="level-chosen"></span>
+        </div>
+        <div class="pick-body" id="level-list">
+          <p class="pick-hint">先に単元を選んでください</p>
+        </div>
       </section>
 
-      <!-- 開始 -->
-      <section class="card" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-        <button type="button" id="start-btn" class="btn btn-primary" disabled
-                style="padding:10px 24px; font-size:15px;">検定を開始</button>
-        <span id="start-hint" class="muted">難易度と単元をそれぞれ1つ選んでください</span>
-      </section>
+      <div class="pick-start">
+        <button type="button" id="start-btn" class="btn btn-primary pick-start-btn" disabled>検定を開始</button>
+        <span id="start-hint" class="muted"></span>
+      </div>
     </div>
 
     <div id="error-area" class="card" style="display:none;">
@@ -44,29 +50,31 @@
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.11.2"></script>
+  <script src="/assets/common.js?v=1.11.3"></script>
   <script>
-    // LEVELS / requireLogin / mountHeaderNav / levelLabel / fmtDate は common.js
-
     const loadingEl = document.getElementById("loading");
     const contentEl = document.getElementById("content");
-    const levelListEl = document.getElementById("level-list");
     const unitListEl = document.getElementById("unit-list");
+    const levelListEl = document.getElementById("level-list");
+    const levelSection = document.getElementById("level-section");
+    const unitChosenEl = document.getElementById("unit-chosen");
+    const levelChosenEl = document.getElementById("level-chosen");
     const startBtn = document.getElementById("start-btn");
     const startHint = document.getElementById("start-hint");
 
-    let availableLevels = [];   // 観点メタのある難易度
-    let selectedLevel = null;
+    let units = [];
+    let availableLevels = [];
     let selectedUnit = null;
-    let unitsCache = {};        // level -> units[]
+    let selectedLevel = null;
+    let progressByLevel = {};
 
     async function init() {
       const me = await requireLogin();
       if (!me) return;
       mountHeaderNav("select");
       try {
-        await loadLevels();
-        renderLevels();
+        await loadCells();
+        renderUnits();
         loadingEl.style.display = "none";
         contentEl.style.display = "block";
       } catch (e) {
@@ -80,99 +88,111 @@
       document.getElementById("error-message").textContent = msg;
     }
 
-    // 観点メタのある難易度を導出する（cells から）。
-    async function loadLevels() {
+    async function loadCells() {
       const res = await fetch("/api/rag/cells");
       if (res.status === 401) { location.href = "/"; return; }
-      if (!res.ok) throw new Error("難易度の取得に失敗しました");
+      if (!res.ok) throw new Error("データの取得に失敗しました");
       const data = await res.json();
-      const set = new Set((data.cells || []).map((c) => c.level));
-      availableLevels = LEVELS.filter((l) => set.has(l));
-      if (availableLevels.length === 0) availableLevels = LEVELS.slice();
-    }
-
-    function renderLevels() {
-      levelListEl.innerHTML = availableLevels.map((l) => `
-        <button type="button" class="sel-card" data-level="${l}">
-          ${levelLabel(l)}
-        </button>`).join("");
-      levelListEl.querySelectorAll(".sel-card").forEach((btn) => {
-        btn.addEventListener("click", () => selectLevel(btn.dataset.level));
-      });
-    }
-
-    async function selectLevel(level) {
-      selectedLevel = level;
-      selectedUnit = null;
-      levelListEl.querySelectorAll(".sel-card").forEach((b) => {
-        b.classList.toggle("is-selected", b.dataset.level === level);
-      });
-      updateStart();
-      await loadUnits(level);
-    }
-
-    async function loadUnits(level) {
-      unitListEl.innerHTML = '<div class="loading">読み込み中…</div>';
-      try {
-        if (!unitsCache[level]) {
-          const res = await fetch(`/api/rag/units?level=${encodeURIComponent(level)}`);
-          if (res.status === 401) { location.href = "/"; return; }
-          if (!res.ok) throw new Error();
-          const data = await res.json();
-          unitsCache[level] = data.units || [];
+      const cells = data.cells || [];
+      const seen = new Set();
+      units = [];
+      for (const c of cells) {
+        if (!seen.has(c.unit_id)) {
+          seen.add(c.unit_id);
+          units.push({ id: c.unit_id, name: c.unit_name });
         }
-        renderUnits(unitsCache[level]);
-      } catch (e) {
-        unitListEl.innerHTML = '<div class="empty">単元の取得に失敗しました</div>';
       }
+      const lv = new Set(cells.map((c) => c.level));
+      availableLevels = LEVELS.filter((l) => lv.has(l));
+      if (!availableLevels.length) availableLevels = LEVELS.slice();
     }
 
-    function renderUnits(units) {
-      if (!units.length) {
-        unitListEl.innerHTML = '<div class="empty">この難易度には単元がありません</div>';
-        return;
-      }
-      unitListEl.innerHTML = `<div class="sel-grid">` + units.map((u) => {
-        const status = u.cleared
-          ? '<span class="prog-chip prog-chip--cleared">クリア</span>'
-          : `<span class="prog-chip">${u.perfect_count}/${u.required_streak}</span>`;
-        const disabled = u.playable ? "" : "disabled";
-        return `
-          <button type="button" class="sel-card ${disabled ? "is-disabled" : ""}" data-unit="${u.id}" ${disabled}>
-            <span class="sel-card-title">${escapeHtml(u.name)}</span>
-            <span class="sel-card-sub">${status}</span>
-          </button>`;
-      }).join("") + `</div>`;
-      unitListEl.querySelectorAll(".sel-card").forEach((btn) => {
-        if (btn.hasAttribute("disabled")) return;
+    function renderUnits() {
+      unitListEl.innerHTML = units.map((u, i) => `
+        <button type="button" class="opt opt--unit" data-unit="${u.id}">
+          <span class="opt-idx">${String(i + 1).padStart(2, "0")}</span>
+          <span class="opt-name">${escapeHtml(u.name)}</span>
+          <span class="opt-check" aria-hidden="true">&#10003;</span>
+        </button>`).join("");
+      unitListEl.querySelectorAll(".opt").forEach((btn) => {
         btn.addEventListener("click", () => selectUnit(btn.dataset.unit));
       });
     }
 
-    function selectUnit(unitId) {
+    async function selectUnit(unitId) {
       selectedUnit = unitId;
-      unitListEl.querySelectorAll(".sel-card").forEach((b) => {
+      selectedLevel = null;
+      unitListEl.querySelectorAll(".opt").forEach((b) => {
         b.classList.toggle("is-selected", b.dataset.unit === unitId);
       });
+      const u = units.find((x) => x.id === unitId);
+      unitChosenEl.textContent = u ? u.name : "";
+      levelChosenEl.textContent = "";
+      levelSection.classList.add("is-active");
+      await ensureProgressForLevels();
+      renderLevels();
+      updateStart();
+      levelSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    async function ensureProgressForLevels() {
+      await Promise.all(availableLevels.map(async (level) => {
+        if (progressByLevel[level]) return;
+        try {
+          const res = await fetch(`/api/rag/units?level=${encodeURIComponent(level)}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          const map = {};
+          (data.units || []).forEach((u) => { map[u.id] = u; });
+          progressByLevel[level] = map;
+        } catch (_) {}
+      }));
+    }
+
+    function renderLevels() {
+      levelListEl.innerHTML = availableLevels.map((l) => {
+        const u = (progressByLevel[l] || {})[selectedUnit] || {};
+        const status = u.cleared
+          ? '<span class="lvl-status lvl-status--done">クリア済み</span>'
+          : (u.required_streak
+              ? `<span class="lvl-status">あと ${Math.max(0, (u.required_streak || 0) - (u.perfect_count || 0))} 回でクリア</span>`
+              : "");
+        return `
+          <button type="button" class="opt opt--level" data-level="${l}">
+            <span class="opt-name">${levelLabel(l)}</span>
+            ${status}
+            <span class="opt-check" aria-hidden="true">&#10003;</span>
+          </button>`;
+      }).join("");
+      levelListEl.querySelectorAll(".opt").forEach((btn) => {
+        btn.addEventListener("click", () => selectLevel(btn.dataset.level));
+      });
+    }
+
+    function selectLevel(level) {
+      selectedLevel = level;
+      levelListEl.querySelectorAll(".opt").forEach((b) => {
+        b.classList.toggle("is-selected", b.dataset.level === level);
+      });
+      levelChosenEl.textContent = levelLabel(level);
       updateStart();
     }
 
     function updateStart() {
-      const ready = selectedLevel && selectedUnit;
+      const ready = selectedUnit && selectedLevel;
       startBtn.disabled = !ready;
-      startHint.textContent = ready
-        ? `${levelLabel(selectedLevel)} / ${unitName(selectedUnit)} を開始できます`
-        : "難易度と単元をそれぞれ1つ選んでください";
-    }
-
-    function unitName(unitId) {
-      const list = unitsCache[selectedLevel] || [];
-      const u = list.find((x) => x.id === unitId);
-      return u ? u.name : unitId;
+      if (ready) {
+        const u = units.find((x) => x.id === selectedUnit);
+        startHint.textContent = `${u ? u.name : ""}・${levelLabel(selectedLevel)}`;
+      } else if (selectedUnit) {
+        startHint.textContent = "難易度を選んでください";
+      } else {
+        startHint.textContent = "";
+      }
     }
 
     startBtn.addEventListener("click", () => {
-      if (!selectedLevel || !selectedUnit) return;
+      if (!selectedUnit || !selectedLevel) return;
       const p = new URLSearchParams({ level: selectedLevel, unit: selectedUnit });
       location.href = `/quiz.html?${p.toString()}`;
     });
