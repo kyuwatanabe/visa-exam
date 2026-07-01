@@ -64,6 +64,7 @@ def _build_user_prompt(
     fmt: str,
     n_choices: int,
     unit_perspectives: Optional[List[dict]] = None,
+    multi_assignments: Optional[List[List[dict]]] = None,
 ) -> str:
     """LLMへ渡すユーザープロンプトを組み立てる（出題形式 fmt で出力スキーマを切替）。
 
@@ -80,16 +81,23 @@ def _build_user_prompt(
     lines.append("")
 
     if fmt == "multi":
-        # 上級（複数選択）は「観点1つ＝1問」にしない。各問の5択を単元の
-        # 複数観点にまたがらせるため、単元の観点一覧だけを素材として提示する。
+        # 上級（複数選択）は、各設問ごとに割り当てた観点から選択肢を1つずつ作る。
         n_q = len(perspectives)
         lines.append(f"# 出題数\n独立した設問を{n_q}問つくる。")
         lines.append("")
-        pool = unit_perspectives if unit_perspectives else perspectives
-        lines.append("# この単元の観点一覧（各問の選択肢は、この中の異なる複数の観点から作る）")
-        for idx, p in enumerate(pool, 1):
-            lines.append(f"{idx}. {p.get('name','')}: {p.get('summary','')}")
-        lines.append("")
+        if multi_assignments:
+            lines.append(
+                "# 各設問の選択肢に割り当てる観点（この割り当て通りに作る）\n"
+                "各設問は、下に列挙した観点から選択肢を1つずつ作る。"
+                "選択肢の順番は観点の順番に対応させる。"
+            )
+            for qi, assigned in enumerate(multi_assignments, 1):
+                lines.append(f"\n## 設問{qi}")
+                for ci, p in enumerate(assigned, 1):
+                    lines.append(
+                        f"- 選択肢{ci}（観点: {p.get('name','')}）: {p.get('summary','')}"
+                    )
+            lines.append("")
         # perspective_id 用に、代表として使える観点idを列挙
         ids = [p.get("id", "") for p in perspectives if p.get("id")]
         if ids:
@@ -146,24 +154,17 @@ def _build_user_prompt(
             '"source_pages": [21] } ] }\n'
             "## 最重要ルール（必ず守る）\n"
             "- **設問文（question）は必ず「正しいものを1つ、または2つ選びなさい。」だけにする。"
-            "『B-1について』『〜の要件について』のような特定の話題を設問文に付けてはならない。**\n"
-            f"- **各設問の {n_choices} 個の選択肢は、必ず『この単元の観点一覧』の"
-            f"互いに異なる {n_choices} 個の観点から、1観点につき1つずつ作る。"
-            "同じ観点を2つ以上使ってはならない。"
-            "5つの選択肢が同じ話題（例: B-1 industrial worker）に偏るのは禁止。**\n"
-            "- 具体例（選択肢がすべて別観点になっている良い例）:\n"
-            "  選択肢1『日本人はVWPを使えるため90日以内の観光ならビザ不要である。』(観点:VWP)\n"
-            "  選択肢2『日本人のBビザは通常10年有効である。』(観点:有効期間)\n"
-            "  選択肢3『B-1は商用、B-2は観光目的のビザである。』(観点:B-1とB-2)\n"
-            "  選択肢4『米国法人の取締役会出席は商用として認められる。』(観点:取締役)\n"
-            "  選択肢5『B-1 in lieu of H-1BはH-1B該当業務ができるビザである。』(観点:in lieu)\n"
-            "- 設問ごとに使う観点の組み合わせを変え、単元全体を広くカバーする。\n"
+            "特定の話題を設問文に付けてはならない。**\n"
+            f"- **各設問の {n_choices} 個の選択肢は、上の『各設問の選択肢に割り当てる観点』の"
+            "割り当て通りに、観点1つにつき選択肢1つを作る（選択肢の順＝観点の順）。"
+            "割り当てを無視して同じ話題に偏らせてはならない。**\n"
+            "- 各選択肢は、割り当てられた観点の内容に基づき、"
+            "『正しい記述』または『一見もっともらしいが原本に照らすと誤りの記述』のどちらかにする。\n"
+            "- 各設問で、正しい記述をちょうど1〜2個にし、残りは誤りの記述にする"
+            "（answer_indices に正しい選択肢の位置を入れる）。\n"
+            "- 設問ごとに正答の個数（1個か2個か）と位置をばらつかせる。\n"
             "## その他のルール\n"
             f"- choices はちょうど {n_choices} 個。\n"
-            "- answer_indices は0始まりの配列で、**正しい選択肢を1〜2個**含める"
-            "（必ず1個以上2個以下）。残りは誤答にする。\n"
-            "- 正答が1個の設問と2個の設問を混在させ、正答の個数・位置を設問ごとに"
-            "ばらつかせる（毎回2個などに偏らせない）。\n"
             "- 誤答は『一見もっともらしいが原本に照らすと誤り』にし、正答との差を細部に置く。\n"
             "- 設問文は必ず「正しいものを1つ、または2つ選びなさい。」とする。\n"
             "- perspective_id は『perspective_id に使える観点id』のいずれかを入れる。\n"
@@ -453,6 +454,22 @@ def generate_questions(
     source_text = rag_source.text_for_keywords(keywords, max_pages=max_pages)
     grounding = "pdf" if source_text else "summary"
 
+    # 上級（multi）は、各設問ごとに単元の全観点から n_choices 個を
+    # ランダムに選び、選択肢を観点に1対1で割り当てる（分散を確実にする）。
+    multi_assignments = None
+    if fmt == "multi":
+        import random as _random
+        pool = [p for p in meta.get("perspectives", []) if p.get("name")]
+        rng = _random.Random(seed)
+        multi_assignments = []
+        for _ in range(want):
+            if len(pool) >= n_choices:
+                picked = rng.sample(pool, n_choices)
+            else:
+                # 観点が足りない場合は重複を許して埋める
+                picked = [rng.choice(pool) for _ in range(n_choices)]
+            multi_assignments.append(picked)
+
     user_prompt = _build_user_prompt(
         level=level,
         unit_name=meta.get("unit_name", unit_id),
@@ -461,6 +478,7 @@ def generate_questions(
         fmt=fmt,
         n_choices=n_choices,
         unit_perspectives=meta.get("perspectives", []),
+        multi_assignments=multi_assignments,
     )
     # システムブロック: 指示は静的。原本テキストは大きく同一単元の連続生成で
     # 使い回せるため、キャッシュ対象（ephemeral）ブロックとして置く。
