@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading as _threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, List, Optional, Tuple
@@ -521,19 +522,26 @@ def generate_questions(
     seed: Optional[int] = None,
     llm_call: Optional[LLMCall] = None,
     max_retries: int = 2,
+    progress_cb: Optional[Callable[[int], None]] = None,
 ) -> dict:
     """観点リストから問題を生成する（バッチ外殻）。
 
     観点数が多い（＝1回の生成が重い）場合は、RAG_TAIL_BATCH 問ずつに分割して
-    複数回生成し、結果を結合して返す。1回のLLM出力を小さく保ち、出力上限超過や
-    時間切れ（「問題を準備中」で固まる）を防ぐ。
+    並列に生成し、結果を結合して返す。progress_cb が渡された場合、各バッチ完了ごとに
+    「これまでに出来た設問数（累積）」を通知する（進捗表示用）。
     """
     batch = max(1, RAG_TAIL_BATCH)
     if len(perspectives) <= batch:
-        return _generate_questions_batch(
+        part = _generate_questions_batch(
             level, unit_id, perspectives, seed=seed,
             llm_call=llm_call, max_retries=max_retries,
         )
+        if progress_cb:
+            try:
+                progress_cb(len(part["questions"]))
+            except Exception:
+                pass
+        return part
 
     # 複数バッチを並列に生成してトータル時間を短縮する（各バッチは独立）。
     chunks = []
@@ -544,6 +552,8 @@ def generate_questions(
 
     results: dict = {}
     first_error: Optional[Exception] = None
+    done_count = 0
+    prog_lock = _threading.Lock()
 
     def _run(idx: int, chunk: List[dict], chunk_seed: Optional[int]):
         return idx, _generate_questions_batch(
@@ -558,6 +568,13 @@ def generate_questions(
             try:
                 idx, part = fut.result()
                 results[idx] = part
+                if progress_cb:
+                    with prog_lock:
+                        done_count += len(part["questions"])
+                        try:
+                            progress_cb(done_count)
+                        except Exception:
+                            pass
             except Exception as e:  # noqa: BLE001
                 if first_error is None:
                     first_error = e

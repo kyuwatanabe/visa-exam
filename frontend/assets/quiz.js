@@ -81,6 +81,31 @@
     errorMsg.textContent = msg;
   }
 
+  // その場生成ジョブの進捗をポーリングし、できた設問数をカウントアップ表示する。
+  // ready になったら開始レスポンス相当の session を返す。error なら例外。
+  async function pollGeneration(jobId, total) {
+    for (let i = 0; i < 240; i++) {   // 最大 240 * 1.5s = 6分
+      await new Promise((r) => setTimeout(r, 1500));
+      let res;
+      try {
+        res = await fetch(`/api/rag/quiz/progress?job_id=${encodeURIComponent(jobId)}`);
+      } catch (_) {
+        continue;  // 一時的な通信失敗はリトライ
+      }
+      if (!res.ok) {
+        let detail = "";
+        try { detail = (await res.json()).detail || ""; } catch (_) {}
+        throw new Error(detail || `生成状況の取得に失敗 (HTTP ${res.status})`);
+      }
+      const p = await res.json();
+      const done = p.done || 0;
+      loadingEl.textContent = `問題を生成中… ${done} / ${p.total_questions || total}`;
+      if (p.status === "ready" && p.session) return p.session;
+      if (p.status === "error") throw new Error(p.error || "問題の生成に失敗しました。");
+    }
+    throw new Error("問題の生成がタイムアウトしました。少し待って再度お試しください。");
+  }
+
   async function loadQuestions() {
     try {
       loadingEl.textContent = "問題を生成中… しばらくお待ちください";
@@ -111,7 +136,16 @@
         try { detail = (await res.json()).detail || ""; } catch (_) {}
         throw new Error(detail || `RAG出題の生成に失敗 (HTTP ${res.status})`);
       }
-      const data = await res.json();
+      let data = await res.json();
+
+      // プールが空でその場生成の場合、status=generating が返る。
+      // 進捗（done/total）をポーリングして「できた設問数」をカウントアップ表示する。
+      if (data.status === "generating" && data.job_id) {
+        const total = data.total_questions || 10;
+        loadingEl.textContent = `問題を生成中… 0 / ${total}`;
+        data = await pollGeneration(data.job_id, total);
+      }
+
       sessionId = data.session_id;
       genMetrics = data.gen_metrics || null;
 

@@ -13,11 +13,12 @@
 from __future__ import annotations
 
 import json
+import threading
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend import auth, db
-from backend import rag_generator, rag_perspectives, rag_pool, rag_session_store, rag_source
+from backend import rag_generator, rag_jobs, rag_perspectives, rag_pool, rag_session_store, rag_source
 from backend.config import (
     ALLOWED_LEVELS,
     CHALLENGE_USER_STATUS_LABELS,
@@ -155,6 +156,7 @@ def rag_quiz_start(req: RagStartRequest, user: dict = Depends(auth.get_current_u
             pending_perspectives=[],  # 全問揃っているのでテイル無し
         )
         return {
+            "status": "ready",
             "level": req.level,
             "unit": req.unit,
             "session_id": session["session_id"],
@@ -165,37 +167,71 @@ def rag_quiz_start(req: RagStartRequest, user: dict = Depends(auth.get_current_u
             "gen_metrics": pooled.get("meta", {}),
         }
 
-    # プールが空: その場で全問を一括生成して返す（バッチは並列生成）。
-    # テイル方式（開始後に残りを追い生成）は Sonnet では遅く「準備中」で
-    # 待たされるため、開始時に全問そろえて確実にする。プールが埋まれば即時払い出しになる。
-    try:
-        gen = rag_generator.generate_questions(
-            req.level, req.unit, perspectives, seed=seed
-        )
-    except rag_generator.RAGGenerationError as e:
-        msg = str(e)
-        if "ANTHROPIC_API_KEY" in msg:
-            raise HTTPException(503, msg)
-        raise HTTPException(502, f"RAG出題の生成に失敗しました: {msg}")
+    # プールが空: その場生成をバックグラウンドで走らせ、進捗（done/total）を
+    # ポーリングできるようにジョブIDを即返す。全問そろったらセッションを作る。
+    total = len(perspectives)
+    job_id = rag_jobs.create_job(user["email"], req.level, req.unit, total)
 
-    session = rag_session_store.create_session(
-        username=user["email"],
-        level=req.level,
-        unit_id=req.unit,
-        questions=gen["questions"],
-        metrics=gen["metrics"],
-        pending_perspectives=[],  # 全問そろっているのでテイル無し
-    )
+    def _bg_generate():
+        try:
+            gen = rag_generator.generate_questions(
+                req.level, req.unit, perspectives, seed=seed,
+                progress_cb=lambda done: rag_jobs.set_done(job_id, done),
+            )
+            session = rag_session_store.create_session(
+                username=user["email"],
+                level=req.level,
+                unit_id=req.unit,
+                questions=gen["questions"],
+                metrics=gen["metrics"],
+                pending_perspectives=[],
+            )
+            rag_jobs.finish(job_id, {
+                "level": req.level,
+                "unit": req.unit,
+                "session_id": session["session_id"],
+                "questions": session["questions"],
+                "total_questions": len(gen["questions"]),
+                "head_count": len(gen["questions"]),
+                "pending_count": 0,
+                "gen_metrics": gen["metrics"],
+            })
+        except rag_generator.RAGGenerationError as e:
+            msg = str(e)
+            rag_jobs.fail(job_id, msg)
+        except Exception as e:  # noqa: BLE001
+            rag_jobs.fail(job_id, str(e))
+
+    threading.Thread(target=_bg_generate, daemon=True).start()
     return {
-        "level": req.level,
-        "unit": req.unit,
-        "session_id": session["session_id"],
-        "questions": session["questions"],
-        "total_questions": len(gen["questions"]),
-        "head_count": len(gen["questions"]),
-        "pending_count": 0,
-        "gen_metrics": gen["metrics"],
+        "status": "generating",
+        "job_id": job_id,
+        "total_questions": total,
+        "done": 0,
     }
+
+
+@router.get("/api/rag/quiz/progress")
+def rag_quiz_progress(job_id: str, user: dict = Depends(auth.get_current_user)):
+    """その場生成ジョブの進捗を返す。done/total をカウントアップ表示に使う。
+
+    status が 'ready' になったら session（開始レスポンス相当）を同梱して返す。
+    """
+    job = rag_jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, "生成ジョブが見つからない、または期限切れです。")
+    if job.get("user") != user["email"]:
+        raise HTTPException(403, "このジョブへのアクセスは許可されていません。")
+    resp = {
+        "status": job["status"],
+        "done": job["done"],
+        "total_questions": job["total"],
+    }
+    if job["status"] == "ready" and job.get("session"):
+        resp["session"] = job["session"]
+    if job["status"] == "error":
+        resp["error"] = job.get("error") or "生成に失敗しました。"
+    return resp
 
 
 @router.post("/api/rag/quiz/continue")
