@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - 受験中</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.9.0">
+  <link rel="stylesheet" href="/assets/style.css?v=1.9.1">
 </head>
 <body>
   <div class="app-shell app-shell--quiz">
@@ -70,8 +70,9 @@
     <div class="modal-card">
       <h2>チャレンジする</h2>
       <p class="muted">この設問の採点結果や出題内容に誤りがあると思われる場合、内容を記入して送信してください。管理者が確認し、認められた場合は判定が訂正されます。</p>
+      <div id="challenge-target" class="challenge-target"></div>
       <label for="challenge-reason">理由</label>
-      <textarea id="challenge-reason" rows="4" maxlength="1000" placeholder="例：解説の根拠が原本の記載と異なる など"></textarea>
+      <textarea id="challenge-reason" rows="4" maxlength="1000" placeholder="例：解説の根拠が手引きの記載と異なる など"></textarea>
       <p class="muted" id="challenge-error" style="color: var(--danger);" hidden></p>
       <div class="btn-row">
         <button type="button" class="btn btn-secondary" id="challenge-cancel">キャンセル</button>
@@ -80,8 +81,8 @@
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.9.0"></script>
-  <script src="/assets/quiz.js?v=1.9.0"></script>
+  <script src="/assets/common.js?v=1.9.1"></script>
+  <script src="/assets/quiz.js?v=1.9.1"></script>
   <script>
     // 受験中の画面。ヘッダーから移動・ログアウトする場合は、回答が記録されない旨を確認する。
     mountHeaderNav(null, { confirmLeave: "受験中です。移動するとここまでの回答は記録されません。移動しますか？" });

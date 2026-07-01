@@ -55,4 +55,5 @@ class ChallengeCreateRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=1000)
     kind: Optional[str] = None                # 'grading' | 'content' | 'both'（分類・任意）
     choice: Optional[int] = None              # 起票時点の自分の解答（選択式）
+    choices: Optional[List[int]] = None       # 起票時点の自分の解答（複数選択・上級）
     text_answers: Optional[List[str]] = None  # 起票時点の自分の解答（穴埋め）

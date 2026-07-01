@@ -264,14 +264,15 @@ def build_challenge_snapshot(
     q: dict,
     choice: Optional[int] = None,
     text_answers: Optional[List[str]] = None,
+    choices: Optional[List[int]] = None,
 ) -> dict:
     """チャレンジ（異議申し立て）起票用に、設問の完全なスナップショットを作る。
 
     設問本文・正答・解説は ephemeral なセッションにしか無いため、起票時にここで保存する。
     管理画面のみで表示する前提（受験者の起票応答には正答を載せない）。
-    起票時点の自分の解答（choice / text_answers）も参考情報として同梱する。
+    起票時点の自分の解答（choice / choices / text_answers）も参考情報として同梱する。
     """
-    graded = grade_answer(q, choice=choice, text_answers=text_answers)
+    graded = grade_answer(q, choice=choice, text_answers=text_answers, choices=choices)
     snap = {
         "question": q.get("question", ""),
         "type": q.get("type", "choice"),
@@ -279,11 +280,15 @@ def build_challenge_snapshot(
         "perspective_id": q.get("perspective_id", ""),
         "source_pages": q.get("source_pages", []),
         "user_choice": choice,
+        "user_choices": choices,
         "user_text_answers": text_answers,
         "is_correct": graded["is_correct"],
         "correct_choice": graded["correct_choice"],
+        "correct_choices": graded.get("correct_choices"),
         "correct_answers": graded["correct_answers"],
     }
     if q.get("type") != "fill_in":
         snap["choices"] = q.get("choices", [])
+    if q.get("type") == "multi":
+        snap["choice_explanations"] = q.get("choice_explanations", [])
     return snap

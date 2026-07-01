@@ -229,6 +229,9 @@
       feedbackEl.className = "feedback " + (result.is_correct ? "is-correct" : "is-wrong");
       feedbackMark.textContent = result.is_correct ? "〇" : "×";
       feedbackLabel.textContent = result.is_correct ? "正解" : "不正解";
+      // multi は各選択肢の色で正誤が分かるため、上部の「正解／不正解」表示は隠す。
+      const feedbackHead = feedbackMark.parentElement;
+      if (feedbackHead) feedbackHead.style.display = (q.type === "multi") ? "none" : "";
 
       if (q.type === "fill_in") {
         // 穴埋めは解説を出さず、空欄が埋まった原文を表示し、空欄だった箇所だけ強調する
@@ -343,16 +346,11 @@
         return;
       }
 
-      // 採点後: この選択肢が正しい記述か／自分が選んだか を明示
-      // ステータス: 記述の正誤（◯正しい / ×誤り）
+      // 採点後: この選択肢が正しい記述か（◯正しい / ×誤り）だけ示す。
+      // 正誤（自分の対応の当否）は色で表すため、「あなたの選択：〜」等のタグは出さない。
       const statusTag = isCorrect
         ? "<span class='mx-ok'>◯ 正しい記述</span>"
         : "<span class='mx-ng'>× 誤った記述</span>";
-      // 自分の選択の当否
-      let youTag = "";
-      if (userPicked && isCorrect) youTag = "<span class='mx-you mx-you-ok'>あなたの選択：正解</span>";
-      else if (userPicked && !isCorrect) youTag = "<span class='mx-you mx-you-ng'>あなたの選択：不正解</span>";
-      else if (!userPicked && isCorrect) youTag = "<span class='mx-you mx-you-miss'>選べていない正解</span>";
 
       // 解説は「誤りの記述」にだけ表示（なぜ誤りか）。正しい記述には出さない。
       const suppress = isCorrect;
@@ -362,7 +360,7 @@
         <div class="marker marker--box">${box}</div>
         <div class="text">
           <div class="mx-choice-text">${escapeHtml(c)}</div>
-          <div class="mx-tags">${statusTag}${youTag}</div>
+          <div class="mx-tags">${statusTag}</div>
           ${reason}
         </div>
       `;
@@ -505,6 +503,29 @@
   function openChallengeModal() {
     challengeReason.value = "";
     challengeError.hidden = true;
+    // どの設問へのチャレンジかをモーダル内に表示する
+    const target = document.getElementById("challenge-target");
+    if (target) {
+      const q = questions[currentIdx];
+      const result = checked[currentIdx];
+      let html = `<div class="ct-qno">問 ${currentIdx + 1}</div>`;
+      html += `<div class="ct-qtext">${escapeHtml(q.question || "")}</div>`;
+      if (q.type === "multi") {
+        const sel = Array.isArray(answers[currentIdx]) ? answers[currentIdx] : [];
+        const corr = (result && Array.isArray(result.correct_choices)) ? result.correct_choices : [];
+        const marks = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ";
+        html += "<ul class='ct-choices'>";
+        (q.choices || []).forEach((c, i) => {
+          const picked = sel.includes(i);
+          const isCorrect = corr.includes(i);
+          const tag = isCorrect ? "◯正しい記述" : "×誤った記述";
+          const you = picked ? "（選択した）" : "";
+          html += `<li>${marks[i] || (i + 1)}. ${escapeHtml(c)} <span class="ct-meta">${tag}${you}</span></li>`;
+        });
+        html += "</ul>";
+      }
+      target.innerHTML = html;
+    }
     challengeModal.hidden = false;
   }
   function closeChallengeModal() {
@@ -525,6 +546,8 @@
     const body = { session_id: sessionId, question_id: q.id, reason };
     if (q.type === "fill_in") {
       body.text_answers = Array.isArray(ans) ? ans : [];
+    } else if (q.type === "multi") {
+      body.choices = Array.isArray(ans) ? ans : [];
     } else {
       body.choice = typeof ans === "number" && ans >= 0 ? ans : null;
     }

@@ -1312,3 +1312,18 @@ code {
 .mx-you-ok   { background: var(--success-bg); color: var(--success); }
 .mx-you-ng   { background: var(--danger-bg);  color: var(--danger); }
 .mx-you-miss { background: #fff4e0;           color: #8a6d2f; }
+
+/* チャレンジ・モーダルの対象設問表示 */
+.challenge-target {
+  background: #f6f7f9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0 14px;
+  font-size: 13px;
+}
+.challenge-target .ct-qno { font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+.challenge-target .ct-qtext { margin-bottom: 6px; }
+.challenge-target .ct-choices { margin: 0; padding-left: 0; list-style: none; }
+.challenge-target .ct-choices li { margin: 3px 0; line-height: 1.45; }
+.challenge-target .ct-meta { color: var(--muted); font-size: 12px; margin-left: 4px; }
