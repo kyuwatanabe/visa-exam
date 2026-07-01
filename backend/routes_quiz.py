@@ -25,7 +25,9 @@ from backend.config import (
     RAG_HEAD_COUNT,
     RAG_QUESTIONS_PER_QUIZ,
     UNIT_CLEAR_REQUIRED_STREAK,
+    UNIT_ORDER,
     VISA_TYPE_UNITS,
+    required_streak_for,
 )
 from backend.db import SOURCE_RAG
 from backend.models import (
@@ -43,16 +45,19 @@ router = APIRouter()
 # RAG 出題
 # ----------------------------------------------------------------------
 def _offered_cells():
-    """出題対象（ビザ種別）の単元セルだけを返す。
+    """出題対象の単元セルを、原本の章立て順（UNIT_ORDER）で返す。
 
-    永住権・ビザの基本など、VISA_TYPE_UNITS に含まれない単元は除外する。
-    cells / units / start すべてここを通すことで、絞り込みの真実源を1つにする。
+    観点メタが存在し、かつ VISA_TYPE_UNITS に含まれる単元のみ。
+    cells / units / start すべてここを通すことで、絞り込み・並び順の真実源を1つにする。
     """
-    return [
+    cells = [
         c
         for c in rag_perspectives.available_cells()
         if c["unit_id"] in VISA_TYPE_UNITS
     ]
+    order = {u: i for i, u in enumerate(UNIT_ORDER)}
+    cells.sort(key=lambda c: order.get(c["unit_id"], len(order)))
+    return cells
 
 
 @router.get("/api/rag/cells")
@@ -91,6 +96,7 @@ def rag_units(
         best_streak = prog.get("best_streak", 0)
         perfect_count = prog.get("perfect_count", 0)
         graduated_at = prog.get("graduated_at")
+        required = required_streak_for(unit_id)
         units_out.append(
             {
                 "id": unit_id,
@@ -100,8 +106,8 @@ def rag_units(
                 "perfect_count": perfect_count,      # 通算満点回数（クリア進捗）
                 "streak_count": prog.get("streak_count", 0),
                 "best_streak": best_streak,
-                "required_streak": UNIT_CLEAR_REQUIRED_STREAK,
-                "cleared": graduated_at is not None or perfect_count >= UNIT_CLEAR_REQUIRED_STREAK,
+                "required_streak": required,
+                "cleared": graduated_at is not None or perfect_count >= required,
                 "graduated_at": graduated_at,
                 "last_taken_at": prog.get("last_taken_at"),
                 "playable": c["perspective_count"] > 0,
@@ -443,7 +449,7 @@ def submit_quiz(req: SubmitRequest, user: dict = Depends(auth.get_current_user))
         "score": score,
         "total": total,
         "passed": score == total,
-        "required_streak": UNIT_CLEAR_REQUIRED_STREAK,
+        "required_streak": required_streak_for(req.unit),
         "unit_progress": unit_progress,
         "results": results,
     }

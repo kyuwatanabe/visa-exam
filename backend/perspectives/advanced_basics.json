@@ -5,112 +5,153 @@
   "level_description": "上級は条文番号（INA/FAM/CFR/USC）、不法滞在バーの発動タイミング、VWP除外国・二重国籍者の扱いなど実務の踏み込みを問う。原本に明記された法的根拠の範囲内でのみ出題する。",
   "perspectives": [
     {
-      "id": "ab01",
+      "id": "bs01",
       "name": "不法滞在バーの発動タイミング",
       "summary": "180日超〜1年未満で3年、1年以上で10年の入国禁止。これらのバーは不法滞在を積んだ者が米国を『出国』した時点で発動し、米国内に留まる限り発動しない。",
-      "source_pages": [9]
+      "source_pages": [
+        9
+      ]
     },
     {
-      "id": "ab02",
+      "id": "bs02",
       "name": "オーバーステイによるビザ無効化の法的根拠",
       "summary": "8 U.S.C. §1202(g)により、非移民ビザで入国し許可された滞在期間を超えて滞在した場合、当該ビザはその滞在期間終了後に無効（void）となる。",
-      "source_pages": [10]
+      "source_pages": [
+        10
+      ]
     },
     {
-      "id": "ab03",
+      "id": "bs03",
       "name": "1年以上不法滞在後の許可なき再入国",
       "summary": "1年以上不法滞在した後に入国許可などなく再入国しようとした場合、永久に入国禁止になる。",
-      "source_pages": [9]
+      "source_pages": [
+        9
+      ]
     },
     {
-      "id": "ab04",
+      "id": "bs04",
       "name": "18歳未満の不法滞在の扱い",
       "summary": "18歳未満の間の不法滞在は、不法滞在バーの算定期間にカウントされない（USC title8の規定）。",
-      "source_pages": [147]
+      "source_pages": [
+        147
+      ]
     },
     {
-      "id": "ab05",
+      "id": "bs05",
       "name": "Automatic Revalidationの法的位置づけと除外",
       "summary": "非移民ビザが無効でもI-94が有効なら一定条件下で再入国しI-94期限まで滞在可能。ただし新規ビザ申請中・30日超の米国外滞在・テロ支援国家国民等は除外。",
-      "source_pages": [12]
+      "source_pages": [
+        12
+      ]
     },
     {
-      "id": "ab06",
+      "id": "bs06",
       "name": "FAMにおける商用の定義の範囲",
       "summary": "9 FAM 402.2-5(B)では契約交渉・ビジネス関係者との相談・訴訟・会議参加・独自研究が商用に該当するが、FAMでも一般的商用が明確に定義されているわけではない。",
-      "source_pages": [12, 13]
+      "source_pages": [
+        12,
+        13
+      ]
     },
     {
-      "id": "ab07",
+      "id": "bs07",
       "name": "Matter of Hiraと商用判断の原則",
       "summary": "9 FAM 402.2-5(A)が引くMatter of Hiraでは、活動の本拠地および利益の発生場所が外国にあれば、米国での付帯的活動は商用と認められるとされる。",
-      "source_pages": [84]
+      "source_pages": [
+        84
+      ]
     },
     {
-      "id": "ab08",
+      "id": "bs08",
       "name": "VWPの免除規定（国土安全保障省長官の裁量）",
       "summary": "国土安全保障省長官が法執行や国家安全保障上の利益と判断した場合、VWP制限を免除しうる。免除該当性は個々に審査される。",
-      "source_pages": [16]
+      "source_pages": [
+        16
+      ]
     },
     {
-      "id": "ab09",
+      "id": "bs09",
       "name": "VWP利用不可となる渡航歴の条件",
       "summary": "2011年3月1日以降に北朝鮮・イラン・イラク・リビア・ソマリア・スーダン・シリア・イエメンへ渡航、2021年1月12日以降にキューバへ渡航・滞在した者は原則VWP不可。",
-      "source_pages": [16]
+      "source_pages": [
+        16
+      ]
     },
     {
-      "id": "ab10",
+      "id": "bs10",
       "name": "VWPと二重国籍者の制限",
       "summary": "VWP参加国の国籍とキューバ・イラン・イラク・北朝鮮・スーダン・シリアのいずれかの国籍を有する二重国籍者はVWPを利用できない。",
-      "source_pages": [16]
+      "source_pages": [
+        16
+      ]
     },
     {
-      "id": "ab11",
+      "id": "bs11",
       "name": "ビザ有効期間の国籍別差異の根拠",
       "summary": "ビザの有効期間は国籍によって異なり、国務省のVisa Reciprocity Scheduleで確認できる。例えば日本人Bビザは通常10年だがベトナム人は通常1年。",
-      "source_pages": [10, 11]
+      "source_pages": [
+        10,
+        11
+      ]
     },
     {
-      "id": "ab12",
+      "id": "bs12",
       "name": "ビザ種別ごとの滞在許可の法的構造",
       "summary": "Eは入国の都度2年、Lは5年ビザだがI-797（Blanket LはI-129S）に準ずる、H-1BはI-797に準ずる、JとFはD/Sでプログラム終了日＋grace period、と構造が異なる。",
-      "source_pages": [11]
+      "source_pages": [
+        11
+      ]
     },
     {
-      "id": "ab13",
+      "id": "bs13",
       "name": "grace periodの法的性質",
       "summary": "F=60日、J=30日などのgrace periodは帰国猶予期間。旅行も可能だが、この期間に一度出国すると有効なビザがなく再入国できない。",
-      "source_pages": [11, 70]
+      "source_pages": [
+        11,
+        70
+      ]
     },
     {
-      "id": "ab14",
+      "id": "bs14",
       "name": "二重国籍者の入出国の原則",
       "summary": "米国で出生した日米二重国籍者は、米国出入国時に米国籍者として米国パスポートを使用しなければならず、米国ビザは発給されない（9 FAM 301.3）。",
-      "source_pages": [146]
+      "source_pages": [
+        146
+      ]
     },
     {
-      "id": "ab15",
+      "id": "bs15",
       "name": "アメリカ国民と市民権の区別",
       "summary": "INAの定義上、米国国民（national）には市民権保有者と、市民権はないが永久的忠誠を有する者（American Samoa・Swains Island出生者など）が含まれる。",
-      "source_pages": [149, 150]
+      "source_pages": [
+        149,
+        150
+      ]
     },
     {
-      "id": "ab16",
+      "id": "bs16",
       "name": "ESTAの適格性質問とcrimes involving moral turpitude",
       "summary": "ESTAの『重大な危害』質問で問題となるのはcrimes involving moral turpitude。殺人・誘拐・強盗・詐欺等が該当し、スピード違反や被害のない飲酒運転は該当しないとの弁護士見解がある。",
-      "source_pages": [18, 160]
+      "source_pages": [
+        18,
+        160
+      ]
     },
     {
-      "id": "ab17",
+      "id": "bs17",
       "name": "Bビザの『一時的滞在』の解釈",
       "summary": "9 FAM 402.2-2(D)では『temporary』は法令上明確に定義されず、滞在が6か月や1年を超えても、期限があり無期限でないと領事が判断すれば差し支えないとされる。",
-      "source_pages": [165]
+      "source_pages": [
+        165
+      ]
     },
     {
-      "id": "ab18",
+      "id": "bs18",
       "name": "パスポート残存期間の6か月ルールと例外",
       "summary": "原則は滞在予定期間＋6か月以上の有効パスポートが必要だが、日本を含む100か国以上は例外で、滞在予定期間をカバーしていればよい（CBP six-month validity）。",
-      "source_pages": [148]
+      "source_pages": [
+        148
+      ]
     }
   ]
 }

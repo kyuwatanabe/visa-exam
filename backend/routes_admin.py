@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel, Field
 
 from backend import auth, db, rag_perspectives
-from backend.config import ADMIN_TOKEN, CHALLENGE_STATUS_LABELS, UNIT_CLEAR_REQUIRED_STREAK, SOURCE_DIR, SOURCE_PDF_PATH, SOURCE_TXT_PATH
+from backend.config import ADMIN_TOKEN, CHALLENGE_STATUS_LABELS, UNIT_CLEAR_REQUIRED_STREAK, SOURCE_DIR, SOURCE_PDF_PATH, SOURCE_TXT_PATH, required_streak_for
 from backend.db import SOURCE_RAG
 
 router = APIRouter()
@@ -49,15 +49,16 @@ def admin_users(token: str):
     by_uid: dict = {}
     for r in rows:
         bucket = by_uid.setdefault(r["user_id"], [])
+        required = required_streak_for(r["unit_id"])
         cleared = r.get("graduated_at") is not None or \
-            r.get("perfect_count", 0) >= UNIT_CLEAR_REQUIRED_STREAK
+            r.get("perfect_count", 0) >= required
         bucket.append(
             {
                 "level": r["level"],
                 "unit_id": r["unit_id"],
                 "unit_name": name_map.get(r["unit_id"], r["unit_id"]),
                 "perfect_count": r.get("perfect_count", 0),
-                "required": UNIT_CLEAR_REQUIRED_STREAK,
+                "required": required,
                 "cleared": cleared,
                 "last_taken_at": r.get("last_taken_at"),
             }

@@ -21,17 +21,33 @@ ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "Kp7vQm2xRt")
 UNIT_CLEAR_REQUIRED_STREAK = 3      # 単元クリアに必要な通算満点回数（累計方式。外しても減らない）
 
 # 出題対象の単元（当面、ビザ種別の単元のみに限定する）。
-# 永住権(green_card)・ビザの基本(basics)など、ビザ種別でない単元は単元選択画面から除外する。
-# データ・観点・プロンプトは保持しており、ここに unit_id を足せば即座に復帰できる（単一の真実源）。
+# 出題対象の単元（原本の章立てに合わせた5単元）。表示順もこの順序に固定する。
+# データ・観点・プロンプトは保持しており、ここを変えれば出題対象を切り替えられる（単一の真実源）。
 # 環境変数 VISA_TYPE_UNITS にカンマ区切りで指定すると上書き可能。
-VISA_TYPE_UNITS = frozenset(
+UNIT_ORDER = [
     u.strip()
     for u in os.environ.get(
         "VISA_TYPE_UNITS",
-        "b_visa,e_visa,f_visa,h1b_visa,j_visa,l_visa",
+        "basics,commercial,work,study,training",
     ).split(",")
     if u.strip()
-)
+]
+VISA_TYPE_UNITS = frozenset(UNIT_ORDER)
+
+# 単元ごとのクリア必要回数（原本の分量＝観点数に応じて変える）。
+# 未指定の単元は UNIT_CLEAR_REQUIRED_STREAK（既定）を使う。
+UNIT_CLEAR_REQUIRED_BY_UNIT = {
+    "basics": 3,
+    "commercial": 2,
+    "work": 5,
+    "study": 2,
+    "training": 3,
+}
+
+
+def required_streak_for(unit_id: str) -> int:
+    """単元のクリア必要回数を返す（未定義は既定 UNIT_CLEAR_REQUIRED_STREAK）。"""
+    return UNIT_CLEAR_REQUIRED_BY_UNIT.get(unit_id, UNIT_CLEAR_REQUIRED_STREAK)
 
 # --- RAG出題方式の設定 ---
 # ANTHROPIC_API_KEY 未設定なら RAG 出題は 503 を返す。
