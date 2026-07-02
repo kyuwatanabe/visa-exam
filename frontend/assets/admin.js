@@ -17,7 +17,6 @@
   const errorArea = document.getElementById("error-area");
   const errorMsg = document.getElementById("error-message");
   const usersArea = document.getElementById("users-area");
-  const historyCard = document.getElementById("history-card");
   const historyTitle = document.getElementById("history-title");
   const historyArea = document.getElementById("history-area");
   const challengesArea = document.getElementById("challenges-area");
@@ -121,11 +120,11 @@
   }
 
   async function loadHistory(userId, displayName) {
-    historyCard.style.display = "block";
+    showUserDetail();   // 一覧を隠して個人記録画面に切り替え
     historyTitle.textContent = `${displayName} さんの記録`;
     historyArea.innerHTML = '<div class="loading">読み込み中…</div>';
-    historyCard.scrollIntoView({ behavior: "smooth", block: "start" });
     historyArea.dataset.userId = userId;
+    window.scrollTo({ top: 0, behavior: "smooth" });
     try {
       const data = await fetchJson(
         `/api/${ADMIN_TOKEN}/admin/history?user_id=${encodeURIComponent(userId)}`
@@ -392,10 +391,13 @@
     challenges: document.getElementById("view-challenges"),
     prompts: document.getElementById("view-prompts"),
   };
+  const userDetailView = document.getElementById("view-user-detail");
   let challengesLoaded = false;
   let promptsLoaded = false;
 
   function switchView(name) {
+    // タブを選んだら個人記録画面は必ず閉じる
+    if (userDetailView) userDetailView.style.display = "none";
     Object.entries(views).forEach(([k, el]) => {
       if (el) el.style.display = (k === name) ? "" : "none";
     });
@@ -410,6 +412,21 @@
     }
   }
   navBtns.forEach((b) => b.addEventListener("click", () => switchView(b.dataset.view)));
+
+  // 個人記録画面へ切り替え（受験者一覧を隠す）
+  function showUserDetail() {
+    Object.values(views).forEach((el) => { if (el) el.style.display = "none"; });
+    if (userDetailView) userDetailView.style.display = "";
+  }
+  // 受験者一覧へ戻る
+  function backToUsers() {
+    if (userDetailView) userDetailView.style.display = "none";
+    if (views.users) views.users.style.display = "";
+    navBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.view === "users"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  const detailBackBtn = document.getElementById("detail-back");
+  if (detailBackBtn) detailBackBtn.addEventListener("click", backToUsers);
 
   load();
 

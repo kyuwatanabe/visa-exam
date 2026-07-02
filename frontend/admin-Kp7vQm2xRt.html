@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - 管理画面</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.11.5">
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.6">
 </head>
 <body>
   <div class="app-shell app-shell--wide">
@@ -34,8 +34,13 @@
       <section class="card admin-view" id="view-users">
         <h2>受験者一覧</h2>
         <div id="users-area"></div>
-        <div id="history-card" style="display:none; margin-top:16px;">
-          <h3 id="history-title">受験履歴</h3>
+      </section>
+
+      <!-- 個人の記録（一覧から受験者を選ぶと表示。一覧とは別画面） -->
+      <section class="admin-view" id="view-user-detail" style="display:none;">
+        <button type="button" id="detail-back" class="btn btn-secondary" style="margin-bottom:12px;">← 受験者一覧に戻る</button>
+        <div class="card">
+          <h2 id="history-title">受験者の記録</h2>
           <div id="history-area"></div>
         </div>
       </section>
@@ -107,7 +112,7 @@
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.11.5"></script>
+  <script src="/assets/common.js?v=1.11.6"></script>
   <script src="/assets/admin.js"></script>
 <footer style="display: flex; padding: 8px; font-size: 12px; border-top: 1px solid #eee;"></footer>
 </body>
