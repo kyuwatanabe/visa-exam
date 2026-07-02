@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - 結果</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.12.7">
+  <link rel="stylesheet" href="/assets/style.css?v=1.12.8">
 </head>
 <body>
   <div class="app-shell">
@@ -20,9 +20,8 @@
 
     <main id="content" style="display:none;">
       <div class="score-banner" id="score-banner">
-        <div class="label" id="banner-label">SCORE</div>
-        <div class="big"><span id="score">0</span> / <span id="total">0</span></div>
-        <div class="pct" id="pct">0%</div>
+        <div class="label" id="banner-label">正答率</div>
+        <div class="big"><span id="pct">0%</span></div>
       </div>
 
       <!-- 暫定スコア注記（チャレンジ中の問題がある場合のみ表示） -->
@@ -30,29 +29,28 @@
         <strong>暫定スコアです。</strong>チャレンジ中の問題があり、確定スコアは管理者の確認後に決まります。
       </div>
 
-      <!-- 連続記録の更新表示 -->
+      <!-- 満点記録の更新表示 -->
       <section class="card" id="streak-banner" style="display:none;">
-        <h2>連続記録の更新</h2>
         <div class="streak-update" id="streak-update"></div>
         <p class="muted" id="streak-message"></p>
       </section>
 
+      <div class="btn-row">
+        <a class="btn" id="retry-link" href="#">この単元をもう一度</a>
+        <a class="btn" id="next-unit-link" href="#" style="display:none;">次の単元へ →</a>
+        <a class="btn btn-secondary" id="units-link" href="#">問題選択へ</a>
+      </div>
+
       <section class="card">
-        <h2>過去の受験履歴</h2>
+        <h2>受験履歴</h2>
         <div id="history-area">
           <div class="loading">読み込み中…</div>
         </div>
       </section>
-
-      <div class="btn-row">
-        <a class="btn" id="retry-link" href="#">もう一度受ける</a>
-        <a class="btn" id="next-unit-link" href="#" style="display:none;">次の単元へ →</a>
-        <a class="btn btn-secondary" id="units-link" href="#">問題選択へ</a>
-      </div>
     </main>
   </div>
 
-  <script src="/assets/common.js?v=1.12.7"></script>
+  <script src="/assets/common.js?v=1.12.8"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const level = params.get("level") || "beginner";
@@ -60,8 +58,6 @@
     const loadingEl = document.getElementById("loading");
     const contentEl = document.getElementById("content");
     const userLabel = document.getElementById("user-label");
-    const scoreEl = document.getElementById("score");
-    const totalEl = document.getElementById("total");
     const pctEl = document.getElementById("pct");
     const bannerLabel = document.getElementById("banner-label");
     const scoreBanner = document.getElementById("score-banner");
@@ -91,8 +87,6 @@
       const appTitle = document.getElementById("app-title");
       if (appTitle) appTitle.textContent = `ビザ検定（${levelLabel(lvl)}）`;
 
-      scoreEl.textContent = result.score;
-      totalEl.textContent = result.total;
       const pct = result.total > 0 ? Math.round((result.score / result.total) * 100) : 0;
       pctEl.textContent = `${pct}%`;
 
@@ -112,7 +106,7 @@
       // 暫定スコア表示（チャレンジ中の問題がある場合）
       if (challengedIds.size > 0) {
         document.getElementById("provisional-note").style.display = "block";
-        bannerLabel.textContent = "暫定スコア";
+        bannerLabel.textContent = "暫定の正答率";
         scoreBanner.classList.add("provisional");
       }
 
@@ -164,23 +158,17 @@
       let headline;
       if (newlyCleared) {
         headline = `<div class="streak-headline cleared">単元クリア達成！</div>`;
-        bannerLabel.textContent = "PERFECT";
         scoreBanner.classList.add("perfect");
       } else if (passed) {
         headline = `<div class="streak-headline perfect">満点！ 通算 +1</div>`;
-        bannerLabel.textContent = "PERFECT";
         scoreBanner.classList.add("perfect");
       } else {
         headline = `<div class="streak-headline reset">満点ではありませんでした</div>`;
-        bannerLabel.textContent = "SCORE";
       }
 
       streakUpdate.innerHTML = `
         ${headline}
         <div class="streak-dots-big">${dots}</div>
-        <div class="streak-counts">
-          <span class="streak-now">通算満点 ${perfectCount} / ${required}</span>
-        </div>
       `;
 
       let msg;
@@ -260,50 +248,42 @@
 
     async function loadHistory(name) {
       try {
-        let unitNameMap = {};
-        try {
-          const p = new URLSearchParams({ level });
-          const ures = await fetch(`/api/rag/units?${p.toString()}`);
-          if (ures.ok) {
-            const udata = await ures.json();
-            (udata.units || []).forEach(u => { unitNameMap[u.id] = u.name; });
-          }
-        } catch (_) {}
-
         const res = await fetch("/api/history");
         const data = await res.json();
-        renderHistory(data.attempts, unitNameMap);
+        renderHistory(data.attempts);
       } catch (e) {
         historyArea.innerHTML = '<div class="empty">履歴の取得に失敗しました</div>';
       }
     }
 
-    // pillClass / fmtDate は common.js に共通化
+    // pillClass / fmtDate / levelLabel は common.js に共通化
 
-    function renderHistory(attempts, unitNameMap) {
-      unitNameMap = unitNameMap || {};
+    function renderHistory(attempts) {
       if (!attempts || attempts.length === 0) {
-        historyArea.innerHTML = '<div class="empty">過去の履歴はまだありません</div>';
+        historyArea.innerHTML = '<div class="empty">受験履歴はまだありません</div>';
         return;
       }
-      const rows = attempts.slice(0, 20).map(a => {
-        const pct = Math.round((a.score / a.total) * 100);
-        const kind = a.unit
-          ? escapeHtml(unitNameMap[a.unit] || a.unit)
-          : escapeHtml(levelLabel(a.level));
+      const rows = attempts.map((a) => {
+        const pct = a.pct != null ? a.pct : (a.total ? Math.round((a.score * 100) / a.total) : 0);
+        const kind = a.unit_name ? escapeHtml(a.unit_name) : "−";
+        const perfectNo = a.perfect_no ? `（${a.perfect_no}/${a.required_streak || ""}）` : "";
         return `<tr>
           <td>${fmtDate(a.taken_at)}</td>
           <td>${kind}</td>
-          <td>${a.score} / ${a.total}</td>
+          <td>${levelLabel(a.level)}${perfectNo}</td>
           <td><span class="score-pill ${pillClass(pct)}">${pct}%</span></td>
         </tr>`;
       }).join("");
       historyArea.innerHTML = `
-        <table class="data">
-          <thead><tr><th>受験日時</th><th>単元</th><th>得点</th><th>正答率</th></tr></thead>
+        <table class="data hist-center">
+          <thead><tr><th>受験日時</th><th>単元</th><th>レベル</th><th>正答率</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-      `;
+        <p class="muted" style="font-size:12px; margin:8px 0 0;">
+          正答率の色：<span class="score-pill high">100%（満点）</span>
+          <span class="score-pill mid">61%以上</span>
+          <span class="score-pill low">60%以下</span>
+        </p>`;
     }
 
     init();

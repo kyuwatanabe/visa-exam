@@ -813,7 +813,15 @@ code {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+}
+
+/* 「あと N回満点でクリア」をドットの直下に中央表示 */
+#streak-message {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .streak-dot.big {
