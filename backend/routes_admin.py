@@ -86,7 +86,12 @@ def admin_users(token: str):
         )
     # クリア数の降順、同数は表示名の昇順
     users.sort(key=lambda u: (-u["cleared_count"], u["username"]))
-    return {"users": users, "required": UNIT_CLEAR_REQUIRED_STREAK}
+    # 全体のクリア対象数（出題対象の 級×単元 セル数）。進捗バーの分母に使う。
+    total_cells = sum(
+        1 for c in rag_perspectives.available_cells()
+        if c["unit_id"] in VISA_TYPE_UNITS
+    )
+    return {"users": users, "required": UNIT_CLEAR_REQUIRED_STREAK, "total_cells": total_cells}
 
 
 @router.get("/api/{token}/admin/history")

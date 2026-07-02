@@ -53,7 +53,7 @@
     }
     try {
       const data = await fetchJson(`/api/${ADMIN_TOKEN}/admin/users`);
-      renderUsers(data.users || []);
+      renderUsers(data.users || [], data.total_cells || 0);
       loadingEl.style.display = "none";
       contentEl.style.display = "block";
       // 起動時にチャレンジ件数を取得してバッジを更新（一覧描画も兼ねる）
@@ -64,36 +64,38 @@
     }
   }
 
-  function progressChip(u) {
-    // 単元別進捗チップ。クリア済みは緑のチップ色で示すため文言は付けない（クライアント要望）。
-    // 未クリアは満点回数を N/3 表記のみで示す（「通算」の語は付けない）。
-    if (u.cleared) {
-      return `<span class="prog-chip prog-chip--cleared">${escapeHtml(u.unit_name)}（${levelLabel(u.level)}）</span>`;
-    }
-    return `<span class="prog-chip">${escapeHtml(u.unit_name)}（${levelLabel(u.level)}）${u.perfect_count}/${u.required}</span>`;
+  // 一覧用のコンパクトな進捗バー。クリア済みセル数 / 全体で、ひと目で進み具合が分かる。
+  function progressBar(clearedCount, totalCells) {
+    const total = totalCells || 0;
+    const done = Math.min(clearedCount || 0, total || clearedCount || 0);
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    return `
+      <div class="uprog">
+        <div class="uprog-bar"><div class="uprog-fill" style="width:${pct}%;"></div></div>
+        <span class="uprog-label">${done} / ${total} クリア</span>
+      </div>`;
   }
 
-  function renderUsers(users) {
+  function renderUsers(users, totalCells) {
     if (users.length === 0) {
       usersArea.innerHTML = '<div class="empty">受験データはまだありません</div>';
       return;
     }
     const rows = users.map((u) => {
-      const chips = (u.units || []).map(progressChip).join(" ");
       return `<tr>
         <td><button type="button" class="user-link" data-user-id="${u.user_id}" data-user="${escapeHtml(u.username)}">${escapeHtml(u.username)}</button></td>
-        <td class="cleared-num">${u.cleared_count}</td>
         <td class="last-taken">${u.last_taken_at ? fmtDate(u.last_taken_at) : '<span class="muted">−</span>'}</td>
-        <td class="prog-cell">${chips || '<span class="muted">進捗なし</span>'}</td>
+        <td class="prog-cell">${progressBar(u.cleared_count, totalCells)}</td>
         <td><button type="button" class="btn btn-secondary pw-reset" data-user-id="${u.user_id}" data-user="${escapeHtml(u.username)}"
               style="padding: 4px 8px; font-size: 12px; white-space: nowrap;">PW再設定</button></td>
       </tr>`;
     }).join("");
     usersArea.innerHTML = `
       <table class="data">
-        <thead><tr><th>受験者</th><th>クリア単元数</th><th>直近の受験</th><th>単元別進捗</th><th></th></tr></thead>
+        <thead><tr><th>受験者</th><th>直近の受験</th><th>進捗（クリア単元）</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      <p class="muted" style="font-size:12px; margin:10px 0 0;">進捗バーは、全 ${totalCells} 単元（級×単元）のうちクリア済みの割合です。受験者名をクリックすると詳しい記録が見られます。</p>
     `;
     usersArea.querySelectorAll(".user-link").forEach((btn) => {
       btn.addEventListener("click", () => loadHistory(btn.dataset.userId, btn.dataset.user));
