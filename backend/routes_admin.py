@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Request
 from pydantic import BaseModel, Field
 
 from backend import auth, db, rag_perspectives
-from backend.config import ADMIN_TOKEN, CHALLENGE_STATUS_LABELS, UNIT_CLEAR_REQUIRED_STREAK, SOURCE_DIR, SOURCE_PDF_PATH, SOURCE_TXT_PATH, required_streak_for
+from backend.config import ADMIN_TOKEN, CHALLENGE_STATUS_LABELS, UNIT_CLEAR_REQUIRED_STREAK, SOURCE_DIR, SOURCE_PDF_PATH, SOURCE_TXT_PATH, VISA_TYPE_UNITS, required_streak_for
 from backend.db import SOURCE_RAG
 
 router = APIRouter()
@@ -48,6 +48,9 @@ def admin_users(token: str):
 
     by_uid: dict = {}
     for r in rows:
+        # 章立て再編より前の古い単元（b_visa 等）の進捗は表示しない。
+        if r["unit_id"] not in VISA_TYPE_UNITS:
+            continue
         bucket = by_uid.setdefault(r["user_id"], [])
         required = required_streak_for(r["unit_id"])
         cleared = r.get("graduated_at") is not None or \
@@ -124,7 +127,7 @@ def admin_history(token: str, user_id: int):
                 "taken_at": a.get("taken_at"),
                 "level": a.get("level"),
                 "unit_id": unit_id,
-                "unit_name": name_map.get(unit_id) if unit_id else None,
+                "unit_name": (name_map.get(unit_id) or unit_id) if unit_id else None,
                 "score": score,
                 "total": total,
                 "pct": pct,
