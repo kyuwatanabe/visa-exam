@@ -97,7 +97,9 @@
     }).join("");
     usersArea.innerHTML = `
       <table class="data">
-        <thead><tr><th>受験者</th><th>直近の受験</th><th>進捗</th><th></th></tr></thead>
+        <thead><tr><th>受験者</th><th>直近の受験</th>
+          <th>進捗（<span class="lg-dot lg-dot--b"></span>初級・<span class="lg-dot lg-dot--i"></span>中級・<span class="lg-dot lg-dot--a"></span>上級）</th>
+          <th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;

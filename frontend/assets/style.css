@@ -1541,9 +1541,28 @@ code {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  background: #e6e8eb;      /* 未クリア */
+  background: #fff;              /* 未クリアは白地＋色枠 */
+  border: 1.5px solid #cfd3d8;
   display: inline-block;
+  box-sizing: border-box;
 }
-.pbox--beginner.is-on     { background: #22c55e; }  /* 初級=緑 */
-.pbox--intermediate.is-on { background: #eab308; }  /* 中級=黄 */
-.pbox--advanced.is-on     { background: #ef4444; }  /* 上級=赤 */
+/* 級ごとの枠色（未クリアでも枠で級が分かる） */
+.pbox--beginner     { border-color: #22c55e; }  /* 初級=緑 */
+.pbox--intermediate { border-color: #eab308; }  /* 中級=黄 */
+.pbox--advanced     { border-color: #ef4444; }  /* 上級=赤 */
+/* クリア済みは同色で塗りつぶし */
+.pbox--beginner.is-on     { background: #22c55e; }
+.pbox--intermediate.is-on { background: #eab308; }
+.pbox--advanced.is-on     { background: #ef4444; }
+
+/* 見出しの凡例ドット */
+.lg-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+.lg-dot--b { background: #22c55e; }
+.lg-dot--i { background: #eab308; }
+.lg-dot--a { background: #ef4444; }
