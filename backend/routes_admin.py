@@ -175,6 +175,7 @@ def _build_units_progress(user_id: int):
     out = []
     for level in ("beginner", "intermediate", "advanced"):
         pmap = db.get_progress_map_by_user_id(user_id, level, source=SOURCE_RAG)
+        acounts = db.get_attempt_counts_by_user_id(user_id, level, source=SOURCE_RAG)
         cells = [c for c in available_cells()
                  if c["level"] == level and c["unit_id"] in VISA_TYPE_UNITS]
         cells.sort(key=lambda c: order.get(c["unit_id"], 99))
@@ -189,6 +190,7 @@ def _build_units_progress(user_id: int):
                 "id": uid,
                 "name": c["unit_name"],
                 "perfect_count": perfect,
+                "attempt_count": acounts.get(uid, 0),   # 総受験回数（合否問わず）
                 "required_streak": required,
                 "cleared": graduated is not None or perfect >= required,
                 "last_taken_at": prog.get("last_taken_at"),

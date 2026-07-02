@@ -1028,6 +1028,25 @@ def delete_auth_session(token_hash: str) -> None:
 # ----------------------------------------------------------------------
 # 認証: user_id ベースのデータ取得（アカウント化後の本流）
 # ----------------------------------------------------------------------
+def get_attempt_counts_by_user_id(user_id: int, level: str, source: str = SOURCE_RAG) -> dict:
+    """指定ユーザー・級の、単元ごとの総受験回数を返す。{unit_id: count}。
+
+    合否に関わらず全受験を数える（パスしなかった受験も学習の記録として重要なため）。
+    unit は details JSON の meta.unit から取り出す。
+    """
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT details FROM attempts WHERE user_id = ? AND level = ? AND source = ?",
+            (user_id, level, source),
+        ).fetchall()
+    counts: dict = {}
+    for r in rows:
+        uid = _attempt_unit(r)
+        if uid:
+            counts[uid] = counts.get(uid, 0) + 1
+    return counts
+
+
 def get_progress_map_by_user_id(user_id: int, level: str, source: str = SOURCE_RAG) -> dict:
     """user_id × level × source の単元別進捗を {unit_id: progress_dict} で返す。"""
     with get_conn() as conn:

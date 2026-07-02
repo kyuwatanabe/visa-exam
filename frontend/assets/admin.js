@@ -179,10 +179,12 @@
       const tds = levels.map((l) => {
         const u = row.cells[l];
         if (!u) return '<td class="pcell">−</td>';
-        if (u.cleared) return '<td class="pcell"><span class="pstat pstat--done">クリア</span></td>';
+        const n = u.attempt_count || 0;
+        const cnt = `<span class="pcount">受験${n}回</span>`;
+        if (u.cleared) return `<td class="pcell"><span class="pstat pstat--done">クリア</span>${cnt}</td>`;
         if ((u.perfect_count || 0) > 0)
-          return `<td class="pcell"><span class="pstat pstat--prog">${u.perfect_count}/${u.required_streak}</span></td>`;
-        return `<td class="pcell"><span class="pstat pstat--none">未達 0/${u.required_streak}</span></td>`;
+          return `<td class="pcell"><span class="pstat pstat--prog">${u.perfect_count}/${u.required_streak}</span>${cnt}</td>`;
+        return `<td class="pcell"><span class="pstat pstat--none">未達 0/${u.required_streak}</span>${cnt}</td>`;
       }).join("");
       return `<tr><td class="pcell-unit">${escapeHtml(row.name)}</td>${tds}</tr>`;
     }).join("");

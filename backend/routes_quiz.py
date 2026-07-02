@@ -89,6 +89,7 @@ def rag_units(
         raise HTTPException(404, f"このレベルには出題対象の単元がありません: {level}")
 
     progress_map = db.get_progress_map_by_user_id(user["id"], level, source=SOURCE_RAG)
+    attempt_counts = db.get_attempt_counts_by_user_id(user["id"], level, source=SOURCE_RAG)
     units_out = []
     for c in cells:
         unit_id = c["unit_id"]
@@ -104,6 +105,7 @@ def rag_units(
                 "perspective_count": c["perspective_count"],
                 "questions_per_quiz": RAG_QUESTIONS_PER_QUIZ,
                 "perfect_count": perfect_count,      # 通算満点回数（クリア進捗）
+                "attempt_count": attempt_counts.get(unit_id, 0),  # 総受験回数（合否問わず）
                 "streak_count": prog.get("streak_count", 0),
                 "best_streak": best_streak,
                 "required_streak": required,
