@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ホーム - ビザ検定</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.11.6">
+  <link rel="stylesheet" href="/assets/style.css?v=1.11.7">
 </head>
 <body>
   <div class="app-shell">
@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.11.6"></script>
+  <script src="/assets/common.js?v=1.11.7"></script>
   <script>
     // LEVELS / requireLogin / mountHeaderNav / levelLabel / fmtDate / pillClass は common.js
 
@@ -125,33 +125,52 @@
       openAttemptIds = new Set(open.filter((c) => c.attempt_id != null).map((c) => c.attempt_id));
     }
 
-    // --- 単元別進捗（未処理チャレンジのある単元は薄い黄色） ---
+    // --- 単元別進捗（単元×級のマトリクス。未処理チャレンジのある単元は印） ---
     async function loadProgress() {
       const area = document.getElementById("progress-area");
       try {
-        const sections = [];
+        const levels = [];
+        const byUnit = {};      // unit_id -> {name, cells:{level->u}}
+        const unitOrder = [];
         for (const level of LEVELS) {
           const res = await fetch(`/api/rag/units?level=${level}`);
           if (!res.ok) continue;
           const data = await res.json();
-          const rows = (data.units || []).map((u) => {
-            const status = u.cleared
-              ? '<span class="prog-chip prog-chip--cleared">クリア</span>'
-              : `<span class="prog-chip">${u.perfect_count}/${u.required_streak}</span>`;
-            const last = u.last_taken_at ? fmtDate(u.last_taken_at) : "−";
-            const pending = openUnitKeys.has(`${level}:${u.id}`);
-            const cls = pending ? ' class="row-pending"' : "";
-            const mark = pending ? ' <span class="pending-tag">確認中</span>' : "";
-            return `<tr${cls}><td>${escapeHtml(u.name)}${mark}</td><td>${status}</td><td>${last}</td></tr>`;
-          }).join("");
-          sections.push(`
-            <h3 style="margin: 12px 0 6px;">${levelLabel(level)}</h3>
-            <table class="data">
-              <thead><tr><th>単元</th><th>進捗</th><th>最終受験</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>`);
+          levels.push(level);
+          (data.units || []).forEach((u) => {
+            if (!byUnit[u.id]) { byUnit[u.id] = { name: u.name, cells: {} }; unitOrder.push(u.id); }
+            byUnit[u.id].cells[level] = u;
+          });
         }
-        area.innerHTML = sections.join("") || '<div class="empty">進捗はまだありません</div>';
+        if (!unitOrder.length) {
+          area.innerHTML = '<div class="empty">進捗はまだありません</div>';
+          return;
+        }
+        const head = `<tr><th>単元</th>${levels.map((l) => `<th>${levelLabel(l)}</th>`).join("")}</tr>`;
+        const rows = unitOrder.map((uid) => {
+          const row = byUnit[uid];
+          const pending = levels.some((l) => openUnitKeys.has(`${l}:${uid}`));
+          const mark = pending ? ' <span class="pending-tag">確認中</span>' : "";
+          const tds = levels.map((l) => {
+            const u = row.cells[l];
+            if (!u) return '<td class="pcell">−</td>';
+            if (u.cleared) return '<td class="pcell"><span class="pstat pstat--done">クリア</span></td>';
+            if ((u.perfect_count || 0) > 0)
+              return `<td class="pcell"><span class="pstat pstat--prog">${u.perfect_count}/${u.required_streak}</span></td>`;
+            return `<td class="pcell"><span class="pstat pstat--none">未達 0/${u.required_streak}</span></td>`;
+          }).join("");
+          return `<tr><td class="pcell-unit">${escapeHtml(row.name)}${mark}</td>${tds}</tr>`;
+        }).join("");
+        area.innerHTML = `
+          <table class="data progress-matrix">
+            <thead>${head}</thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <p class="muted" style="font-size:12px; margin:8px 0 0;">
+            <span class="pstat pstat--done">クリア</span> 必要回数の満点到達　
+            <span class="pstat pstat--prog">n/m</span> 満点n回（必要m回）　
+            <span class="pstat pstat--none">未達</span> 満点なし
+          </p>`;
       } catch (e) {
         area.innerHTML = '<div class="empty">進捗の取得に失敗しました</div>';
       }

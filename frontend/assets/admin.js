@@ -119,7 +119,10 @@
     });
   }
 
+  let currentDetail = null;   // { userId, displayName } 個人記録画面で表示中の受験者
+
   async function loadHistory(userId, displayName) {
+    currentDetail = { userId, displayName };
     showUserDetail();   // 一覧を隠して個人記録画面に切り替え
     historyTitle.textContent = `${displayName} さんの記録`;
     historyArea.innerHTML = '<div class="loading">読み込み中…</div>';
@@ -146,26 +149,45 @@
     });
   }
 
-  // 単元別進捗（マイページと同じ：級ごとに 単元・進捗・最終受験）
+  // 単元別進捗：行＝単元、列＝初級/中級/上級 のマトリクス。
+  // どの単元のどの級まで進んでいるかが一目で分かるようにする。
   function renderUnitProgress(unitsProgress) {
     if (!unitsProgress.length) {
-      return '<h3 style="margin:4px 0 6px;">単元別進捗</h3><div class="empty">進捗はまだありません</div>';
+      return '<h3 style="margin:4px 0 10px;">単元別進捗</h3><div class="empty">進捗はまだありません</div>';
     }
-    const sections = unitsProgress.map((sec) => {
-      const rows = (sec.units || []).map((u) => {
-        const status = u.cleared
-          ? '<span class="prog-chip prog-chip--cleared">クリア</span>'
-          : `<span class="prog-chip">${u.perfect_count}/${u.required_streak}</span>`;
-        const last = u.last_taken_at ? fmtDate(u.last_taken_at) : "−";
-        return `<tr><td>${escapeHtml(u.name)}</td><td>${status}</td><td>${last}</td></tr>`;
+    // level -> {unit_id -> cell} に組み替え、単元の一覧（順序）も作る
+    const levels = unitsProgress.map((s) => s.level);
+    const unitOrder = [];
+    const byUnit = {};   // unit_id -> {name, cells:{level->u}}
+    unitsProgress.forEach((sec) => {
+      (sec.units || []).forEach((u) => {
+        if (!byUnit[u.id]) { byUnit[u.id] = { name: u.name, cells: {} }; unitOrder.push(u.id); }
+        byUnit[u.id].cells[sec.level] = u;
+      });
+    });
+    const head = `<tr><th>単元</th>${levels.map((l) => `<th>${levelLabel(l)}</th>`).join("")}</tr>`;
+    const rows = unitOrder.map((uid) => {
+      const row = byUnit[uid];
+      const tds = levels.map((l) => {
+        const u = row.cells[l];
+        if (!u) return '<td class="pcell">−</td>';
+        if (u.cleared) return '<td class="pcell"><span class="pstat pstat--done">クリア</span></td>';
+        if ((u.perfect_count || 0) > 0)
+          return `<td class="pcell"><span class="pstat pstat--prog">${u.perfect_count}/${u.required_streak}</span></td>`;
+        return `<td class="pcell"><span class="pstat pstat--none">未達 0/${u.required_streak}</span></td>`;
       }).join("");
-      return `<h4 style="margin:12px 0 6px;">${levelLabel(sec.level)}</h4>
-        <table class="data">
-          <thead><tr><th>単元</th><th>進捗</th><th>最終受験</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+      return `<tr><td class="pcell-unit">${escapeHtml(row.name)}</td>${tds}</tr>`;
     }).join("");
-    return `<h3 style="margin:4px 0 6px;">単元別進捗</h3>${sections}`;
+    return `<h3 style="margin:4px 0 10px;">単元別進捗</h3>
+      <table class="data progress-matrix">
+        <thead>${head}</thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="muted" style="font-size:12px; margin:8px 0 0;">
+        <span class="pstat pstat--done">クリア</span> 必要回数の満点到達　
+        <span class="pstat pstat--prog">n/m</span> 満点n回（必要m回）　
+        <span class="pstat pstat--none">未達</span> 満点なし
+      </p>`;
   }
 
   function renderHistory(attempts, requiredCount, userId) {
@@ -201,9 +223,10 @@
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "削除に失敗しました");
-      // 一覧（進捗チップ）も更新し、詳細を再読込
-      await load();
-      await loadHistory(userId, historyTitle.textContent.replace(" さんの記録", ""));
+      // 個人記録画面（進捗＋履歴）を最新化。続けて一覧も裏で更新。
+      const name = (currentDetail && currentDetail.displayName) || "";
+      await loadHistory(userId, name);
+      load();   // 一覧の進捗チップも更新（画面は個人記録のまま）
     } catch (e) {
       alert("削除に失敗: " + e.message);
     }
