@@ -1534,22 +1534,16 @@ code {
 .pstat--prog { background: #fef9c3; color: #854d0e; }
 .pstat--none { background: #f1f2f4; color: #8a8f98; font-weight: 500; }
 
-/* 受験者一覧の進捗バー（級ごと） */
-.uprog { display: flex; flex-direction: column; gap: 5px; min-width: 220px; }
-.uprog-row { display: flex; align-items: center; gap: 8px; }
-.uprog-lv { font-size: 12px; color: var(--muted); width: 34px; flex: none; }
-.uprog-bar {
-  flex: 1;
-  height: 8px;
-  background: #eceef1;
-  border-radius: 999px;
-  overflow: hidden;
-  min-width: 90px;
+/* 受験者一覧の進捗ボックス（級ごとに色分け・横並び） */
+.uprog { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pboxgroup { display: inline-flex; gap: 3px; }
+.pbox {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #e6e8eb;      /* 未クリア */
+  display: inline-block;
 }
-.uprog-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  border-radius: 999px;
-  transition: width .3s;
-}
-.uprog-label { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; width: 34px; text-align: right; flex: none; }
+.pbox--beginner.is-on     { background: #22c55e; }  /* 初級=緑 */
+.pbox--intermediate.is-on { background: #eab308; }  /* 中級=黄 */
+.pbox--advanced.is-on     { background: #ef4444; }  /* 上級=赤 */

@@ -64,21 +64,21 @@
     }
   }
 
-  // 級ごと（初級/中級/上級）に1本ずつの進捗バー。クリア済み/その級の単元数。
+  // 級ごとの進捗をボックスで表す。級の単元数ぶんのボックスを並べ、クリア済みの数だけ塗る。
+  // 級は色で区別（初級=緑 / 中級=黄 / 上級=赤）。3級を横に並べる。
   function levelBars(clearedByLevel, totalByLevel) {
     const cbl = clearedByLevel || {};
-    return LEVELS.map((lv) => {
+    const groups = LEVELS.map((lv) => {
       const total = totalByLevel[lv] || 0;
       if (!total) return "";
       const done = Math.min(cbl[lv] || 0, total);
-      const pct = Math.round((done / total) * 100);
-      return `
-        <div class="uprog-row">
-          <span class="uprog-lv">${levelLabel(lv)}</span>
-          <div class="uprog-bar"><div class="uprog-fill" style="width:${pct}%;"></div></div>
-          <span class="uprog-label">${done}/${total}</span>
-        </div>`;
-    }).join("");
+      let boxes = "";
+      for (let i = 0; i < total; i++) {
+        boxes += `<span class="pbox pbox--${lv} ${i < done ? "is-on" : ""}"></span>`;
+      }
+      return `<span class="pboxgroup">${boxes}</span>`;
+    });
+    return `<div class="uprog">${groups.join("")}</div>`;
   }
 
   function renderUsers(users, totalByLevel) {
@@ -90,17 +90,16 @@
       return `<tr>
         <td><button type="button" class="user-link" data-user-id="${u.user_id}" data-user="${escapeHtml(u.username)}">${escapeHtml(u.username)}</button></td>
         <td class="last-taken">${u.last_taken_at ? fmtDate(u.last_taken_at) : '<span class="muted">−</span>'}</td>
-        <td class="prog-cell"><div class="uprog">${levelBars(u.cleared_by_level, totalByLevel)}</div></td>
+        <td class="prog-cell">${levelBars(u.cleared_by_level, totalByLevel)}</td>
         <td><button type="button" class="btn btn-secondary pw-reset" data-user-id="${u.user_id}" data-user="${escapeHtml(u.username)}"
               style="padding: 4px 8px; font-size: 12px; white-space: nowrap;">PW再設定</button></td>
       </tr>`;
     }).join("");
     usersArea.innerHTML = `
       <table class="data">
-        <thead><tr><th>受験者</th><th>直近の受験</th><th>進捗（級ごとのクリア単元）</th><th></th></tr></thead>
+        <thead><tr><th>受験者</th><th>直近の受験</th><th>進捗</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <p class="muted" style="font-size:12px; margin:10px 0 0;">各バーは、その級の全単元のうちクリア済みの割合です。受験者名をクリックすると詳しい記録が見られます。</p>
     `;
     usersArea.querySelectorAll(".user-link").forEach((btn) => {
       btn.addEventListener("click", () => loadHistory(btn.dataset.userId, btn.dataset.user));
