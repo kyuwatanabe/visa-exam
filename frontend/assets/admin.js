@@ -182,12 +182,12 @@
         const attempts = u.attempt_count || 0;      // 受験数（合否問わず）
         const passed = u.perfect_count || 0;         // 正解数＝満点の回数
         const need = u.required_streak || 0;         // 正解必要回数
-        // 状態: 未受験=グレー / 挑戦中=淡グリーン / クリア=グリーン
-        let cls = "pcell--none";
-        if (u.cleared) cls = "pcell--done";
-        else if (attempts > 0) cls = "pcell--prog";
+        // 状態: 未受験=グレー / 挑戦中=淡色 / クリア=級の色
+        let state = "none";
+        if (u.cleared) state = "done";
+        else if (attempts > 0) state = "prog";
         const nums = `<span class="pnums">${passed}/${need}/${attempts}</span>`;
-        return `<td class="pcell ${cls}">${nums}</td>`;
+        return `<td class="pcell pcell--${l} pcell--${state}">${nums}</td>`;
       }).join("");
       return `<tr><td class="pcell-unit">${escapeHtml(row.name)}</td>${tds}</tr>`;
     }).join("");
@@ -199,8 +199,8 @@
       <p class="muted" style="font-size:12px; margin:8px 0 0; line-height:1.8;">
         数字は「正解数／正解必要回数／受験数」です。<br>
         色：<span class="lg-box lg-box--none"></span>未受験　
-        <span class="lg-box lg-box--prog"></span>挑戦中（1回以上受験）　
-        <span class="lg-box lg-box--done"></span>クリア（正解数が必要回数に到達）
+        <span class="lg-box lg-box--prog-beginner"></span><span class="lg-box lg-box--prog-intermediate"></span><span class="lg-box lg-box--prog-advanced"></span>挑戦中（淡色）　
+        <span class="lg-box lg-box--beginner"></span>初級 / <span class="lg-box lg-box--intermediate"></span>中級 / <span class="lg-box lg-box--advanced"></span>上級 クリア
       </p>`;
   }
 
