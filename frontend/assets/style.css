@@ -1623,4 +1623,4 @@ code {
 .ct-choice input { margin-top: 3px; }
 
 /* 受験履歴の中央揃え（見出し・セルとも中央） */
-.hist-center th, .hist-center td { text-align: center; vertical-align: middle; }
+table.data.hist-center th, table.data.hist-center td { text-align: center; vertical-align: middle; }

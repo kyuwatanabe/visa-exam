@@ -205,8 +205,8 @@
 
   function progressLegend() {
     return `<p class="muted" style="font-size:12px; margin:10px 0 0; line-height:1.9;">
-      数字は「受験数（満点数/必要満点数）」です。<br>
-      <span class="lg-box lg-box--empty"></span>未受験　薄い色＝挑戦中　濃い色＝クリア（級ごとに 初級=緑／中級=黄／上級=赤）
+      数字は「受験数（満点数/必要満点数）」<br>
+      <span class="lg-box lg-box--empty"></span>未受験　薄い色＝挑戦中　濃い色＝クリア
     </p>`;
   }
 
