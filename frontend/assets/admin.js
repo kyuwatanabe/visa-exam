@@ -174,10 +174,10 @@
       return '<h3 style="margin:20px 0 6px;">受験履歴</h3><div class="empty">受験履歴はありません</div>';
     }
     const rows = attempts.map((a) => {
-      const kind = a.unit_name ? escapeHtml(a.unit_name) : escapeHtml(levelLabel(a.level));
+      const kind = a.unit_name ? escapeHtml(a.unit_name) : "−";
       const perfectNo = a.perfect_no ? `（${a.perfect_no}/${requiredCount}）` : "";
       const pill = `<span class="score-pill ${pillClass(a.pct)}">${a.score} / ${a.total}</span>`;
-      return `<tr class="hist-row hist-row--${rateClass(a.pct)}">
+      return `<tr>
         <td>${fmtDate(a.taken_at)}</td>
         <td>${kind}</td>
         <td>${levelLabel(a.level)}${perfectNo}</td>

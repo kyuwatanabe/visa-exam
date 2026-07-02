@@ -458,10 +458,24 @@ def submit_quiz(req: SubmitRequest, user: dict = Depends(auth.get_current_user))
 @router.get("/api/history")
 def get_history(user: dict = Depends(auth.get_current_user)):
     """ログイン中ユーザー自身の受験履歴（マイページ・結果画面用）。"""
+    attempts = db.get_history_by_user_id(user["id"])
+    # 管理側の表示と揃えるため、単元名（unit_name）を付与する。
+    name_map = _unit_name_map()
+    for a in attempts:
+        uid = a.get("unit")
+        a["unit_name"] = name_map.get(uid) if uid else None
     return {
         "username": user["display_name"],
-        "attempts": db.get_history_by_user_id(user["id"]),
+        "attempts": attempts,
     }
+
+
+def _unit_name_map() -> dict:
+    """unit_id -> 単元名 の対応表（出題対象の単元）。"""
+    out = {}
+    for c in rag_perspectives.available_cells():
+        out[c["unit_id"]] = c["unit_name"]
+    return out
 
 
 # ----------------------------------------------------------------------
