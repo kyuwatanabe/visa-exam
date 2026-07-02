@@ -1546,14 +1546,14 @@ code {
 }
 /* 未受験は級によらずグレー */
 .pcell--empty { background: #f1f2f4; color: #9aa0a8; }
-/* 挑戦中（淡色）: 級ごと */
-.pcell--beginner.pcell--prog     { background: #d7f5df; }  /* 初級=緑系 */
-.pcell--intermediate.pcell--prog { background: #fbf3cf; }  /* 中級=黄系 */
-.pcell--advanced.pcell--prog     { background: #fbdcdc; }  /* 上級=赤系 */
-/* クリア: 級の色（濃い） */
-.pcell--beginner.pcell--done     { background: #22c55e; }  /* 初級=緑 */
-.pcell--intermediate.pcell--done { background: #eab308; }  /* 中級=黄 */
-.pcell--advanced.pcell--done     { background: #ef4444; }  /* 上級=赤 */
+/* 挑戦中（淡色・もっと薄く）: 級ごと */
+.pcell--beginner.pcell--prog     { background: #eafaef; }  /* 初級=緑系 */
+.pcell--intermediate.pcell--prog { background: #fdf8e3; }  /* 中級=黄系 */
+.pcell--advanced.pcell--prog     { background: #fdeeee; }  /* 上級=赤系 */
+/* クリア: 級の色（濃すぎない） */
+.pcell--beginner.pcell--done     { background: #5ecb81; }  /* 初級=緑 */
+.pcell--intermediate.pcell--done { background: #e6c34e; }  /* 中級=黄 */
+.pcell--advanced.pcell--done     { background: #ef7676; }  /* 上級=赤 */
 .pnums {
   font-size: 15px;
   font-weight: 700;
@@ -1561,7 +1561,7 @@ code {
   color: #1f2937;
 }
 .pnums-sub { font-size: 12px; font-weight: 600; margin-left: 3px; opacity: .8; }
-.pcell--done .pnums { color: #fff; }
+.pcell--done .pnums { color: #14532d; }
 /* 凡例の色ボックス */
 .lg-box {
   display: inline-block;
@@ -1621,3 +1621,6 @@ code {
 .ct-hint { font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
 .ct-choice { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
 .ct-choice input { margin-top: 3px; }
+
+/* 受験履歴の中央揃え（見出し・セルとも中央） */
+.hist-center th, .hist-center td { text-align: center; vertical-align: middle; }

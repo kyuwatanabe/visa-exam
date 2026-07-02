@@ -461,11 +461,14 @@ def submit_quiz(req: SubmitRequest, user: dict = Depends(auth.get_current_user))
 def get_history(user: dict = Depends(auth.get_current_user)):
     """ログイン中ユーザー自身の受験履歴（マイページ・結果画面用）。"""
     attempts = db.get_history_by_user_id(user["id"])
-    # 管理側の表示と揃えるため、単元名（unit_name）を付与する。
+    # 管理側の表示と揃えるため、単元名（unit_name）と正答率（pct）を付与する。
     name_map = _unit_name_map()
     for a in attempts:
         uid = a.get("unit")
         a["unit_name"] = name_map.get(uid) if uid else None
+        total = a.get("total") or 0
+        score = a.get("score") or 0
+        a["pct"] = round(score * 100 / total) if total else 0
     return {
         "username": user["display_name"],
         "attempts": attempts,

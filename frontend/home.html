@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ホーム - ビザ検定</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.12.5">
+  <link rel="stylesheet" href="/assets/style.css?v=1.12.6">
 </head>
 <body>
   <div class="app-shell">
@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.12.5"></script>
+  <script src="/assets/common.js?v=1.12.6"></script>
   <script>
     // LEVELS / requireLogin / mountHeaderNav / levelLabel / fmtDate / pillClass は common.js
 
@@ -192,23 +192,29 @@
           return;
         }
         const rows = attempts.map((a) => {
-          const pct = a.total ? Math.round((a.score * 100) / a.total) : 0;
+          const pct = a.pct != null ? a.pct : (a.total ? Math.round((a.score * 100) / a.total) : 0);
           const pending = openAttemptIds.has(a.id);
           const cls = pending ? ' class="row-pending"' : "";
           const mark = pending ? ' <span class="pending-tag">暫定</span>' : "";
           const kind = a.unit_name ? escapeHtml(a.unit_name) : "−";
+          const perfectNo = a.perfect_no ? `（${a.perfect_no}/${a.required_streak || ""}）` : "";
           return `<tr${cls}>
             <td>${fmtDate(a.taken_at)}${mark}</td>
             <td>${kind}</td>
-            <td>${levelLabel(a.level)}</td>
-            <td><span class="score-pill ${pillClass(pct)}">${a.score} / ${a.total}</span></td>
+            <td>${levelLabel(a.level)}${perfectNo}</td>
+            <td><span class="score-pill ${pillClass(pct)}">${pct}%</span></td>
           </tr>`;
         }).join("");
         area.innerHTML = `
-          <table class="data">
-            <thead><tr><th>受験日時</th><th>単元</th><th>レベル</th><th>得点</th></tr></thead>
+          <table class="data hist-center">
+            <thead><tr><th>受験日時</th><th>単元</th><th>レベル</th><th>正答率</th></tr></thead>
             <tbody>${rows}</tbody>
-          </table>`;
+          </table>
+          <p class="muted" style="font-size:12px; margin:8px 0 0;">
+            正答率の色：<span class="score-pill high">100%（満点）</span>
+            <span class="score-pill mid">61%以上</span>
+            <span class="score-pill low">60%以下</span>
+          </p>`;
       } catch (e) {
         area.innerHTML = '<div class="empty">履歴の取得に失敗しました</div>';
       }

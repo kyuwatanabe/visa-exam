@@ -217,7 +217,7 @@
     const rows = attempts.map((a) => {
       const kind = a.unit_name ? escapeHtml(a.unit_name) : "−";
       const perfectNo = a.perfect_no ? `（${a.perfect_no}/${requiredCount}）` : "";
-      const pill = `<span class="score-pill ${pillClass(a.pct)}">${a.score} / ${a.total}</span>`;
+      const pill = `<span class="score-pill ${pillClass(a.pct)}">${a.pct}%</span>`;
       return `<tr>
         <td>${fmtDate(a.taken_at)}</td>
         <td>${kind}</td>
@@ -228,10 +228,20 @@
       </tr>`;
     }).join("");
     return `<h3 style="margin:20px 0 6px;">受験履歴</h3>
-      <table class="data hist-table">
-        <thead><tr><th>受験日時</th><th>単元</th><th>レベル</th><th>得点</th><th></th></tr></thead>
+      <table class="data hist-table hist-center">
+        <thead><tr><th>受験日時</th><th>単元</th><th>レベル</th><th>正答率</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table>
+      ${pctLegend()}`;
+  }
+
+  // 正答率の色の説明（緑=満点/黄=61%以上/赤=それ未満）
+  function pctLegend() {
+    return `<p class="muted" style="font-size:12px; margin:8px 0 0;">
+      正答率の色：<span class="score-pill high">100%（満点）</span>
+      <span class="score-pill mid">61%以上</span>
+      <span class="score-pill low">60%以下</span>
+    </p>`;
   }
 
   async function deleteAttempt(userId, attemptId) {
