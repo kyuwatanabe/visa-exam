@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ホーム - ビザ検定</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.12.3">
+  <link rel="stylesheet" href="/assets/style.css?v=1.12.4">
 </head>
 <body>
   <div class="app-shell">
@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.12.3"></script>
+  <script src="/assets/common.js?v=1.12.4"></script>
   <script>
     // LEVELS / requireLogin / mountHeaderNav / levelLabel / fmtDate / pillClass は common.js
 
@@ -157,13 +157,11 @@
             const attempts = u.attempt_count || 0;
             const passed = u.perfect_count || 0;
             const need = u.required_streak || 0;
-            const badge = u.cleared
-              ? '<span class="pstat pstat--done">クリア</span>'
-              : (passed > 0
-                  ? '<span class="pstat pstat--prog">あと' + Math.max(0, need - passed) + '回</span>'
-                  : '<span class="pstat pstat--none">未クリア</span>');
-            const detail = `<span class="pcount">受験 ${attempts}回／合格 ${passed}<span class="pslash">/${need}</span></span>`;
-            return `<td class="pcell">${badge}${detail}</td>`;
+            let cls = "pcell--none";
+            if (u.cleared) cls = "pcell--done";
+            else if (attempts > 0) cls = "pcell--prog";
+            const nums = `<span class="pnums">${passed}/${need}/${attempts}</span>`;
+            return `<td class="pcell ${cls}">${nums}</td>`;
           }).join("");
           return `<tr><td class="pcell-unit">${escapeHtml(row.name)}${mark}</td>${tds}</tr>`;
         }).join("");
@@ -172,8 +170,11 @@
             <thead>${head}</thead>
             <tbody>${rows}</tbody>
           </table>
-          <p class="muted" style="font-size:12px; margin:8px 0 0;">
-            各マス下段は「受験＝挑戦した回数／合格＝満点の回数（右の数字はクリアに必要な合格回数）」です。
+          <p class="muted" style="font-size:12px; margin:8px 0 0; line-height:1.8;">
+            数字は「正解数／正解必要回数／受験数」です。<br>
+            色：<span class="lg-box lg-box--none"></span>未受験　
+            <span class="lg-box lg-box--prog"></span>挑戦中　
+            <span class="lg-box lg-box--done"></span>クリア
           </p>`;
       } catch (e) {
         area.innerHTML = '<div class="empty">進捗の取得に失敗しました</div>';

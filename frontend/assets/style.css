@@ -1519,22 +1519,32 @@ code {
 .progress-matrix { width: 100%; }
 .progress-matrix th, .progress-matrix td { text-align: center; }
 .progress-matrix th:first-child, .progress-matrix .pcell-unit { text-align: left; }
+.progress-matrix td.pcell { border-radius: 6px; min-width: 78px; }
 .pcell-unit { font-weight: 600; white-space: nowrap; }
 .pcell { padding: 6px 8px; }
-.pstat {
+/* マスの状態色: 未受験=グレー / 挑戦中=淡グリーン / クリア=グリーン */
+.pcell--none { background: #f1f2f4; }
+.pcell--prog { background: #d7f5df; }
+.pcell--done { background: #22c55e; }
+.pnums {
   display: inline-block;
-  min-width: 56px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.6;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #1f2937;
 }
-.pstat--done { background: #dcfce7; color: #166534; }
-.pstat--prog { background: #fef9c3; color: #854d0e; }
-.pstat--none { background: #f1f2f4; color: #8a8f98; font-weight: 500; }
-.pcount { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
-.pslash { color: #b5b9c0; }
+.pcell--done .pnums { color: #fff; }
+/* 凡例の色ボックス */
+.lg-box {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin: 0 3px 0 6px;
+}
+.lg-box--none { background: #f1f2f4; border: 1px solid #d8d6d0; }
+.lg-box--prog { background: #d7f5df; }
+.lg-box--done { background: #22c55e; }
 
 /* 受験者一覧の進捗ボックス（級ごとに色分け・横並び） */
 .uprog { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
