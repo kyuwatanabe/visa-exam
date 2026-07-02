@@ -1471,6 +1471,7 @@ def accept_challenge(
     resolution: str = "correct",
     admin_message: Optional[str] = None,
     admin_note: Optional[str] = None,
+    choice_rulings: Optional[dict] = None,
 ) -> dict:
     """open のチャレンジを認容し、採点を遡及訂正する（単一トランザクション・冪等）。
 
@@ -1482,13 +1483,13 @@ def accept_challenge(
       - "correct"（正解に訂正）：当該設問を正解扱いにする。
       - "void"（ノーカウント）：当該設問を集計から除外する。
 
+    choice_rulings（上級・複数選択のみ）: {選択肢index: "correct"|"void"|"reject"}。
+      渡された場合は選択肢単位で設問全体を再採点し、正解になるなら設問 resolution="correct" に
+      落とし込む（正解にならなければ採点は変えない）。
+
     戻り値: {"ok": bool, "error"?: str,
              "scoring": {applied, reason, score, total, is_perfect}}
-        applied=False は「この question_id を含む確定受験が無い（中断/やり直し）」場合で、
-        採点には反映されない（reason="no_attempt"）。
     """
-    if resolution not in ("correct", "void"):
-        return {"ok": False, "error": "bad_resolution"}
     now = _now_iso()
     with get_conn() as conn:
         ch = conn.execute(
@@ -1499,7 +1500,32 @@ def accept_challenge(
         if ch["status"] != "open":
             return {"ok": False, "error": "not_open"}
 
-        # 1) 裁定を記録（採点は触らない）
+        # 上級（選択肢単位の裁定）が来た場合は、設問全体の可否を計算して resolution を決める。
+        if choice_rulings:
+            from backend import scoring
+            try:
+                snap = json.loads(ch["snapshot"] or "{}")
+            except (ValueError, TypeError):
+                snap = {}
+            n_choices = len(snap.get("choices") or [])
+            rulings_idx = {}
+            for k, v in choice_rulings.items():
+                try:
+                    rulings_idx[int(k)] = v
+                except (ValueError, TypeError):
+                    continue
+            becomes_correct = scoring.multi_question_correct_after_rulings(
+                snap.get("user_choices") or [],
+                snap.get("correct_choices") or [],
+                n_choices,
+                rulings_idx,
+            )
+            resolution = "correct" if becomes_correct else None
+
+        if resolution is not None and resolution not in ("correct", "void"):
+            return {"ok": False, "error": "bad_resolution"}
+
+        # 1) 裁定を記録（採点は触らない）。resolution が None（＝正解にならない）でも認容記録は残す。
         conn.execute(
             "UPDATE challenges SET status = 'accepted', scoring_applied = 1, "
             "resolution = ?, admin_message = ?, admin_note = ?, resolved_at = ? WHERE id = ?",
@@ -1511,7 +1537,6 @@ def accept_challenge(
         if att is None:
             return {"ok": True, "scoring": {"applied": False, "reason": "no_attempt",
                                             "score": None, "total": None, "is_perfect": None}}
-        # 表示用に紐付けキャッシュも正しい値へ揃えておく
         if ch["attempt_id"] != att["id"]:
             conn.execute(
                 "UPDATE challenges SET attempt_id = ? WHERE id = ?", (att["id"], challenge_id)

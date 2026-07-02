@@ -274,24 +274,61 @@
   }
 
   // スナップショット（設問・選択肢・正答・受験者の解答・解説）を整形する
-  function renderSnapshot(s) {
+  function renderSnapshot(s, opts) {
     if (!s || !s.question) return "";
+    const editable = opts && opts.editable;   // open のとき選択肢別の判定UIを出す
+    const chId = opts && opts.chId;
     let body = `<div class="ch-question">${escapeHtml(s.question)}</div>`;
     if (s.type === "fill_in") {
       const correct = Array.isArray(s.correct_answers) ? s.correct_answers.join(" / ") : "";
       const ua = Array.isArray(s.user_text_answers) ? s.user_text_answers.join(" / ") : "";
       body += `<div class="ch-meta">正解例：${escapeHtml(correct)}</div>`;
       body += `<div class="ch-meta">受験者の解答：${escapeHtml(ua) || "（未記入）"}（${s.is_correct ? "正解" : "不正解"}）</div>`;
+    } else if (s.type === "multi") {
+      // 上級: 各選択肢の正誤・受験者の選択・チャレンジ対象を表示。対象には判定セレクトを出す。
+      const choices = Array.isArray(s.choices) ? s.choices : [];
+      const uc = Array.isArray(s.user_choices) ? s.user_choices : [];
+      const cc = Array.isArray(s.correct_choices) ? s.correct_choices : [];
+      const targets = Array.isArray(s.target_choices) ? s.target_choices : [];
+      const marks = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ";
+      const rows = choices.map((c, i) => {
+        const isCorrect = cc.includes(i);
+        const picked = uc.includes(i);
+        const handledOk = picked === isCorrect;
+        const desc = isCorrect ? "◯正しい記述" : "×誤った記述";
+        const you = picked ? "選択した" : "選ばなかった";
+        const okmark = handledOk ? '<span class="ch-ok">対応◯</span>' : '<span class="ch-ng">対応×</span>';
+        const isTarget = targets.includes(i);
+        const targetTag = isTarget ? '<span class="ch-target-tag">チャレンジ対象</span>' : "";
+        let ruleSel = "";
+        if (editable && isTarget) {
+          ruleSel = `
+            <select class="ch-ruling" data-ch="${chId}" data-idx="${i}">
+              <option value="reject">却下（変更なし）</option>
+              <option value="void">ノーカウント</option>
+              <option value="correct">正解扱い</option>
+            </select>`;
+        }
+        return `<li class="ch-mrow ${isTarget ? "is-target" : ""}">
+          <span class="ch-mmark">${marks[i] || (i + 1)}</span>
+          <span class="ch-mtext">${escapeHtml(c)}
+            <span class="ch-meta2">${desc}／${you}／${okmark} ${targetTag}</span>
+          </span>
+          ${ruleSel}
+        </li>`;
+      }).join("");
+      body += `<ul class="ch-mchoices">${rows}</ul>`;
+      body += `<div class="ch-meta">現在の判定：${s.is_correct ? "正解" : "不正解"}</div>`;
     } else {
       const choices = Array.isArray(s.choices) ? s.choices : [];
-      const opts = choices.map((c, i) => {
+      const opts2 = choices.map((c, i) => {
         const marks = [];
         if (i === s.correct_choice) marks.push("正答");
         if (i === s.user_choice) marks.push("受験者");
         const tag = marks.length ? `（${marks.join("・")}）` : "";
         return `<li class="${i === s.correct_choice ? "ch-correct" : ""}">${escapeHtml(c)}${tag}</li>`;
       }).join("");
-      body += `<ul class="ch-choices">${opts}</ul>`;
+      body += `<ul class="ch-choices">${opts2}</ul>`;
       body += `<div class="ch-meta">判定：${s.is_correct ? "正解" : "不正解"}</div>`;
     }
     if (s.explanation) body += `<div class="ch-meta">解説：${escapeHtml(s.explanation)}</div>`;
@@ -316,17 +353,25 @@
       const resRO = ch.resolution
         ? `<div class="ch-meta">対応：${escapeHtml(RES_LABEL[ch.resolution] || ch.resolution)}</div>` : "";
       let panel = "";
+      const isMulti = ch.snapshot && ch.snapshot.type === "multi";
       if (ch.status === "open") {
+        const actions = isMulti
+          ? `<div class="ch-actions">
+               <button type="button" class="btn ch-apply-multi" data-id="${ch.id}">この判定で再採点</button>
+               <button type="button" class="btn btn-secondary ch-reject" data-id="${ch.id}">却下</button>
+             </div>
+             <p class="muted" style="font-size:12px; margin:6px 0 0;">対象選択肢ごとに判定を選び、「この判定で再採点」を押します。すべての選択肢の対応が正しくなれば正解になります（ノーカウントは除外して判定）。</p>`
+          : `<div class="ch-actions">
+               <button type="button" class="btn ch-correct" data-id="${ch.id}">正解に訂正</button>
+               <button type="button" class="btn ch-void" data-id="${ch.id}">ノーカウント</button>
+               <button type="button" class="btn btn-secondary ch-reject" data-id="${ch.id}">却下</button>
+             </div>`;
         panel = `
           <label class="ch-field-label">受験者への返信（任意・本人のマイページに表示）</label>
           <textarea class="ch-msg" data-id="${ch.id}" rows="2"></textarea>
           <label class="ch-field-label">対応メモ（内部・任意）</label>
           <textarea class="ch-note" data-id="${ch.id}" rows="2"></textarea>
-          <div class="ch-actions">
-            <button type="button" class="btn ch-correct" data-id="${ch.id}">正解に訂正</button>
-            <button type="button" class="btn ch-void" data-id="${ch.id}">ノーカウント</button>
-            <button type="button" class="btn btn-secondary ch-reject" data-id="${ch.id}">却下</button>
-          </div>`;
+          ${actions}`;
       } else if (ch.status === "accepted") {
         panel = `
           ${resRO}${msgRO}
@@ -348,7 +393,7 @@
           <span class="muted">${escapeHtml(ch.applicant)} ／ ${escapeHtml(ch.unit_name)}（${levelLabel(ch.level)}）／ ${fmtDate(ch.created_at)}</span>
         </div>
         <div class="ch-reason"><strong>チャレンジ：</strong>${escapeHtml(ch.reason || "")}</div>
-        ${renderSnapshot(ch.snapshot)}
+        ${renderSnapshot(ch.snapshot, { editable: ch.status === "open" && ch.snapshot && ch.snapshot.type === "multi", chId: ch.id })}
         ${noAttempt}
         ${panel}
       </div>`;
@@ -363,6 +408,16 @@
       b.addEventListener("click", () => resolveChallenge(b.dataset.id, "reject")));
     challengesArea.querySelectorAll(".ch-close").forEach((b) =>
       b.addEventListener("click", () => closeChallenge(b.dataset.id)));
+    // 上級: 選択肢別の判定を集めて再採点
+    challengesArea.querySelectorAll(".ch-apply-multi").forEach((b) =>
+      b.addEventListener("click", () => {
+        const id = b.dataset.id;
+        const rulings = {};
+        challengesArea.querySelectorAll(`.ch-ruling[data-ch="${id}"]`).forEach((sel) => {
+          rulings[sel.dataset.idx] = sel.value;
+        });
+        resolveChallenge(id, "accept", null, rulings);
+      }));
   }
 
   // カード内の入力欄の値を取得（空は null）。
@@ -373,13 +428,16 @@
     return v || null;
   }
 
-  // 認容（resolution: correct/void）／却下。確認ダイアログは出さず即時処理する。
-  async function resolveChallenge(id, action, resolution) {
+  // 認容（resolution: correct/void、または上級の choice_rulings）／却下。
+  async function resolveChallenge(id, action, resolution, choiceRulings) {
     const body = {
       admin_message: cardValue(id, "ch-msg"),
       admin_note: cardValue(id, "ch-note"),
     };
-    if (action === "accept") body.resolution = resolution;
+    if (action === "accept") {
+      if (resolution) body.resolution = resolution;
+      if (choiceRulings) body.choice_rulings = choiceRulings;
+    }
     try {
       const res = await fetch(`/api/${ADMIN_TOKEN}/admin/challenges/${id}/${action}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -389,7 +447,11 @@
       if (!res.ok) throw new Error(data.detail || "処理に失敗しました");
       // 採点に反映されなかった（確定受験が見つからない等）場合は無音にせず明示する。
       if (data.warning) alert("注意: " + data.warning);
-      loadChallenges();   // 一覧・バッジが更新されることが処理完了の合図
+      // 上級で「正解にならなかった」場合の通知
+      if (data.scoring && data.scoring.applied && choiceRulings && !data.scoring.is_perfect) {
+        alert("この判定では全問正解にはならなかったため、正解扱いにはなりませんでした。");
+      }
+      loadChallenges();
     } catch (e) {
       alert("失敗: " + e.message);
     }

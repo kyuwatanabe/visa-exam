@@ -241,6 +241,8 @@ class AdminChallengeResolveRequest(BaseModel):
     resolution: Optional[str] = "correct"
     admin_message: Optional[str] = Field(None, max_length=2000)
     admin_note: Optional[str] = Field(None, max_length=2000)
+    # 上級（複数選択）: {選択肢index(文字列): "correct"|"void"|"reject"}
+    choice_rulings: Optional[dict] = None
 
 
 class AdminChallengeCloseRequest(BaseModel):
@@ -300,6 +302,7 @@ def admin_accept_challenge(token: str, challenge_id: int, req: AdminChallengeRes
     res = db.accept_challenge(
         challenge_id, resolution=(req.resolution or "correct"),
         admin_message=req.admin_message, admin_note=req.admin_note,
+        choice_rulings=req.choice_rulings,
     )
     if not res["ok"]:
         if res.get("error") == "not_found":

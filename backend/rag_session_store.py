@@ -265,12 +265,14 @@ def build_challenge_snapshot(
     choice: Optional[int] = None,
     text_answers: Optional[List[str]] = None,
     choices: Optional[List[int]] = None,
+    target_choices: Optional[List[int]] = None,
 ) -> dict:
     """チャレンジ（異議申し立て）起票用に、設問の完全なスナップショットを作る。
 
     設問本文・正答・解説は ephemeral なセッションにしか無いため、起票時にここで保存する。
     管理画面のみで表示する前提（受験者の起票応答には正答を載せない）。
     起票時点の自分の解答（choice / choices / text_answers）も参考情報として同梱する。
+    target_choices は上級で「どの選択肢へのチャレンジか」（0始まり・複数可）。
     """
     graded = grade_answer(q, choice=choice, text_answers=text_answers, choices=choices)
     snap = {
@@ -291,4 +293,5 @@ def build_challenge_snapshot(
         snap["choices"] = q.get("choices", [])
     if q.get("type") == "multi":
         snap["choice_explanations"] = q.get("choice_explanations", [])
+        snap["target_choices"] = sorted(set(target_choices)) if target_choices else []
     return snap

@@ -57,3 +57,4 @@ class ChallengeCreateRequest(BaseModel):
     choice: Optional[int] = None              # 起票時点の自分の解答（選択式）
     choices: Optional[List[int]] = None       # 起票時点の自分の解答（複数選択・上級）
     text_answers: Optional[List[str]] = None  # 起票時点の自分の解答（穴埋め）
+    target_choices: Optional[List[int]] = None  # 上級: どの選択肢へのチャレンジか（0始まり・複数可）

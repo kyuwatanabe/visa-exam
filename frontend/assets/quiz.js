@@ -547,13 +547,18 @@
         const sel = Array.isArray(answers[currentIdx]) ? answers[currentIdx] : [];
         const corr = (result && Array.isArray(result.correct_choices)) ? result.correct_choices : [];
         const marks = "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ";
+        html += "<p class='ct-hint'>どの選択肢へのチャレンジですか？（複数選択可）</p>";
         html += "<ul class='ct-choices'>";
         (q.choices || []).forEach((c, i) => {
           const picked = sel.includes(i);
           const isCorrect = corr.includes(i);
           const tag = isCorrect ? "◯正しい記述" : "×誤った記述";
           const you = picked ? "（選択した）" : "";
-          html += `<li>${marks[i] || (i + 1)}. ${escapeHtml(c)} <span class="ct-meta">${tag}${you}</span></li>`;
+          html += `<li>
+            <label class="ct-choice">
+              <input type="checkbox" class="ct-target" value="${i}">
+              <span>${marks[i] || (i + 1)}. ${escapeHtml(c)} <span class="ct-meta">${tag}${you}</span></span>
+            </label></li>`;
         });
         html += "</ul>";
       }
@@ -581,6 +586,15 @@
       body.text_answers = Array.isArray(ans) ? ans : [];
     } else if (q.type === "multi") {
       body.choices = Array.isArray(ans) ? ans : [];
+      // どの選択肢へのチャレンジか（チェックした選択肢）
+      const targets = Array.from(document.querySelectorAll(".ct-target:checked"))
+        .map((el) => parseInt(el.value, 10));
+      if (targets.length === 0) {
+        challengeError.textContent = "チャレンジする選択肢を1つ以上選んでください。";
+        challengeError.hidden = false;
+        return;
+      }
+      body.target_choices = targets;
     } else {
       body.choice = typeof ans === "number" && ans >= 0 ? ans : null;
     }

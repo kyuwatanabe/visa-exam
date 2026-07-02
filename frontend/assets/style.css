@@ -1566,3 +1566,20 @@ code {
 .lg-dot--b { background: #22c55e; }
 .lg-dot--i { background: #eab308; }
 .lg-dot--a { background: #ef4444; }
+
+/* チャレンジ: 上級の選択肢別判定（管理側） */
+.ch-mchoices { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.ch-mrow { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.ch-mrow.is-target { border-color: var(--accent); background: #fffbef; }
+.ch-mmark { flex: none; font-weight: 700; color: var(--muted); }
+.ch-mtext { flex: 1; }
+.ch-meta2 { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ch-ok { color: #2f855a; font-weight: 600; }
+.ch-ng { color: #c53030; font-weight: 600; }
+.ch-target-tag { display: inline-block; background: var(--accent); color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 999px; margin-left: 4px; }
+.ch-ruling { flex: none; font-size: 13px; padding: 4px 6px; }
+
+/* チャレンジモーダル: 選択肢チェック（受験者側） */
+.ct-hint { font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+.ct-choice { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.ct-choice input { margin-top: 3px; }

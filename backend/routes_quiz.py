@@ -507,7 +507,8 @@ def create_challenge(
         raise HTTPException(404, f"問題が見つからない: id={req.question_id}")
 
     snapshot = rag_session_store.build_challenge_snapshot(
-        q, choice=req.choice, text_answers=req.text_answers, choices=req.choices
+        q, choice=req.choice, text_answers=req.text_answers, choices=req.choices,
+        target_choices=req.target_choices,
     )
     challenge_id = db.create_challenge(
         user_id=user["id"],

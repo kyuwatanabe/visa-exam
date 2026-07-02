@@ -12,6 +12,40 @@
 from typing import Dict, List, Optional
 
 
+def multi_question_correct_after_rulings(
+    user_choices: List[int],
+    correct_choices: List[int],
+    n_choices: int,
+    rulings_by_index: Dict[int, str],
+) -> bool:
+    """上級（複数選択）1問が、選択肢単位の裁定を適用した後に「正解（満点）」になるか。
+
+    各選択肢について「自分の対応が正しいか」を判定する:
+      - 正しい記述(correct_choices に含む)は「選んでいれば正しい対応」
+      - 誤った記述は「選んでいなければ正しい対応」
+    裁定(rulings_by_index[index]):
+      - "correct" … その選択肢の自分の対応を正しいとみなす（強制的にOK）
+      - "void"    … その選択肢を判定から除外する
+      - "reject" / 無指定 … 元の対応のまま
+    非除外の全選択肢で対応が正しければ True（＝設問正解）。
+    """
+    picked = set(user_choices or [])
+    correct = set(correct_choices or [])
+    all_ok = True
+    counted = 0
+    for i in range(n_choices):
+        ruling = rulings_by_index.get(i)
+        if ruling == "void":
+            continue                 # ノーカウント: 判定から除外
+        counted += 1
+        if ruling == "correct":
+            continue                 # 正解扱い: この選択肢はOK
+        handled_ok = (i in picked) == (i in correct)
+        if not handled_ok:
+            all_ok = False
+    return counted > 0 and all_ok
+
+
 def effective_attempt(
     raw_answers: List[dict],
     resolutions_by_qid: Dict[str, str],
