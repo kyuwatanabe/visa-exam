@@ -254,16 +254,15 @@
     }
   }
 
-  // 未処理（open）件数を受信箱バッジに反映する。
+  // 未処理（open）件数をメニューのバッジに反映する。
   function updateInboxBadge() {
     const open = allChallenges.filter((c) => c.status === "open").length;
+    if (!inboxBadge) return;
     if (open > 0) {
       inboxBadge.textContent = open;
       inboxBadge.hidden = false;
-      inboxBtn.classList.add("has-unread");
     } else {
       inboxBadge.hidden = true;
-      inboxBtn.classList.remove("has-unread");
     }
   }
 
