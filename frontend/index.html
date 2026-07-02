@@ -5,26 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>ビザ検定 - ログイン</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.12.2">
+  <link rel="stylesheet" href="/assets/style.css?v=1.12.3">
 </head>
 <body>
   <div class="app-shell">
     <header class="header">
       <h1>ビザ検定</h1>
-      <!-- DEV ONLY（撤去予定）: ボタン撤去時はこの div ごと削除する -->
-      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-        <!-- ===== DEV ONLY（撤去予定）: 管理画面確認用デモデータ生成ボタン ===== -->
-        <!-- 撤去箇所: このブロック / 下部の DEV ONLY スクリプト / backend/routes_dev.py /
-             main.py の include / config.py の DEMO_SEED_ENABLED -->
-        <button id="dev-seed-btn" type="button" hidden
-                style="font-size: 12px; padding: 4px 10px; border: 1px dashed #b58900;
-                       border-radius: 6px; background: #fdf6e3; color: #b58900;
-                       cursor: pointer; white-space: nowrap;"
-                title="構築段階専用。管理画面確認用のダミー受験者10人分のデータを作成します。">
-          ダミーデータ生成
-        </button>
-        <!-- ===== /DEV ONLY ===== -->
-      </div>
     </header>
 
     <!-- 認証カード（ログイン／新規登録）。トップはログイン専用。
@@ -112,42 +98,6 @@
     checkSession();
   </script>
 
-  <!-- ===== DEV ONLY（撤去予定）: デモデータ生成ボタンの動作 ===== -->
-  <script>
-    (function () {
-      const btn = document.getElementById("dev-seed-btn");
-      if (!btn) return;
-
-      // サーバ側で有効なときだけボタンを表示する（無効時は存在ごと隠す）
-      fetch("/api/dev/seed-demo")
-        .then((r) => (r.ok ? r.json() : { enabled: false }))
-        .then((d) => { if (d.enabled) btn.hidden = false; })
-        .catch(() => {});
-
-      btn.addEventListener("click", async () => {
-        const ok = confirm(
-          "管理画面確認用のダミー受験者10人分のデータを作成します。\n" +
-          "同名のダミー受験者の既存記録は削除して作り直します。\n" +
-          "（構築段階専用の機能です）\n\n実行しますか？"
-        );
-        if (!ok) return;
-        btn.disabled = true;
-        btn.textContent = "生成中…";
-        try {
-          const res = await fetch("/api/dev/seed-demo", { method: "POST" });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || "生成に失敗しました");
-          alert(`ダミーデータを作成しました。\n受験者 ${data.users} 人 / 受験 ${data.attempts} 回\n管理画面で確認できます。`);
-        } catch (e) {
-          alert("失敗: " + e.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = "ダミーデータ生成";
-        }
-      });
-    })();
-  </script>
-  <!-- ===== /DEV ONLY ===== -->
 <footer style="display: flex; padding: 8px; font-size: 12px; border-top: 1px solid #eee;"></footer>
 </body>
 </html>

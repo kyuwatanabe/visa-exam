@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ホーム - ビザ検定</title>
-  <link rel="stylesheet" href="/assets/style.css?v=1.12.2">
+  <link rel="stylesheet" href="/assets/style.css?v=1.12.3">
 </head>
 <body>
   <div class="app-shell">
@@ -75,7 +75,7 @@
     </div>
   </div>
 
-  <script src="/assets/common.js?v=1.12.2"></script>
+  <script src="/assets/common.js?v=1.12.3"></script>
   <script>
     // LEVELS / requireLogin / mountHeaderNav / levelLabel / fmtDate / pillClass は common.js
 
@@ -154,12 +154,16 @@
           const tds = levels.map((l) => {
             const u = row.cells[l];
             if (!u) return '<td class="pcell">−</td>';
-            const n = u.attempt_count || 0;
-            const cnt = `<span class="pcount">受験${n}回</span>`;
-            if (u.cleared) return `<td class="pcell"><span class="pstat pstat--done">クリア</span>${cnt}</td>`;
-            if ((u.perfect_count || 0) > 0)
-              return `<td class="pcell"><span class="pstat pstat--prog">${u.perfect_count}/${u.required_streak}</span>${cnt}</td>`;
-            return `<td class="pcell"><span class="pstat pstat--none">未達 0/${u.required_streak}</span>${cnt}</td>`;
+            const attempts = u.attempt_count || 0;
+            const passed = u.perfect_count || 0;
+            const need = u.required_streak || 0;
+            const badge = u.cleared
+              ? '<span class="pstat pstat--done">クリア</span>'
+              : (passed > 0
+                  ? '<span class="pstat pstat--prog">あと' + Math.max(0, need - passed) + '回</span>'
+                  : '<span class="pstat pstat--none">未クリア</span>');
+            const detail = `<span class="pcount">受験 ${attempts}回／合格 ${passed}<span class="pslash">/${need}</span></span>`;
+            return `<td class="pcell">${badge}${detail}</td>`;
           }).join("");
           return `<tr><td class="pcell-unit">${escapeHtml(row.name)}${mark}</td>${tds}</tr>`;
         }).join("");
@@ -169,9 +173,7 @@
             <tbody>${rows}</tbody>
           </table>
           <p class="muted" style="font-size:12px; margin:8px 0 0;">
-            <span class="pstat pstat--done">クリア</span> 必要回数の満点到達　
-            <span class="pstat pstat--prog">n/m</span> 満点n回（必要m回）　
-            <span class="pstat pstat--none">未達</span> 満点なし
+            各マス下段は「受験＝挑戦した回数／合格＝満点の回数（右の数字はクリアに必要な合格回数）」です。
           </p>`;
       } catch (e) {
         area.innerHTML = '<div class="empty">進捗の取得に失敗しました</div>';

@@ -179,12 +179,16 @@
       const tds = levels.map((l) => {
         const u = row.cells[l];
         if (!u) return '<td class="pcell">−</td>';
-        const n = u.attempt_count || 0;
-        const cnt = `<span class="pcount">受験${n}回</span>`;
-        if (u.cleared) return `<td class="pcell"><span class="pstat pstat--done">クリア</span>${cnt}</td>`;
-        if ((u.perfect_count || 0) > 0)
-          return `<td class="pcell"><span class="pstat pstat--prog">${u.perfect_count}/${u.required_streak}</span>${cnt}</td>`;
-        return `<td class="pcell"><span class="pstat pstat--none">未達 0/${u.required_streak}</span>${cnt}</td>`;
+        const attempts = u.attempt_count || 0;      // やった回数（合否問わず）
+        const passed = u.perfect_count || 0;         // 合格＝満点の回数
+        const need = u.required_streak || 0;         // クリアに必要な合格回数
+        const badge = u.cleared
+          ? '<span class="pstat pstat--done">クリア</span>'
+          : (passed > 0
+              ? '<span class="pstat pstat--prog">あと' + Math.max(0, need - passed) + '回</span>'
+              : '<span class="pstat pstat--none">未クリア</span>');
+        const detail = `<span class="pcount">受験 ${attempts}回／合格 ${passed}<span class="pslash">/${need}</span></span>`;
+        return `<td class="pcell">${badge}${detail}</td>`;
       }).join("");
       return `<tr><td class="pcell-unit">${escapeHtml(row.name)}</td>${tds}</tr>`;
     }).join("");
@@ -194,9 +198,7 @@
         <tbody>${rows}</tbody>
       </table>
       <p class="muted" style="font-size:12px; margin:8px 0 0;">
-        <span class="pstat pstat--done">クリア</span> 必要回数の満点到達　
-        <span class="pstat pstat--prog">n/m</span> 満点n回（必要m回）　
-        <span class="pstat pstat--none">未達</span> 満点なし
+        各マス上段はクリア状況、下段は「受験＝挑戦した回数／合格＝満点の回数（右の数字はクリアに必要な合格回数）」です。
       </p>`;
   }
 
