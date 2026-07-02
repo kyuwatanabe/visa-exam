@@ -355,6 +355,63 @@ def admin_close_challenge(token: str, challenge_id: int, req: AdminChallengeClos
     return {"ok": True}
 
 
+@router.post("/api/{token}/admin/source/upload")
+async def admin_upload_source(token: str, file: UploadFile = File(...)):
+    """PDF をアップロードして、自動的にテキストに変換する。
+
+    アップロード時の元ファイル名を保持して保存する（PDF と、同名の .txt）。
+    RAG 読み込みは source ディレクトリ内の最新 .txt を使う。
+    """
+    _check_token(token)
+    from backend.config import SOURCE_DIR
+    from pypdf import PdfReader
+    import io
+    import os
+
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(400, "PDF ファイルのみアップロード可能です。")
+
+    # ファイル名のサニタイズ（パス区切りを除去し、ベース名のみにする）
+    base = os.path.basename(file.filename)
+    base = base.replace("/", "_").replace("\\", "_").strip()
+    stem = base[:-4] if base.lower().endswith(".pdf") else base  # 拡張子除去
+    if not stem:
+        stem = "source"
+
+    try:
+        content = await file.read()
+        pdf_bytes = io.BytesIO(content)
+        reader = PdfReader(pdf_bytes)
+
+        SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+        pdf_path = SOURCE_DIR / f"{stem}.pdf"
+        txt_path = SOURCE_DIR / f"{stem}.txt"
+        pdf_path.write_bytes(content)
+
+        text_parts = []
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            text_parts.append(page_text)
+
+        full_text = "\f".join(text_parts)
+        txt_path.write_text(full_text, encoding="utf-8")
+
+        from backend import rag_source
+        rag_source.reset_cache()
+
+        return {
+            "ok": True,
+            "filename": base,
+            "pdf_size": len(content),
+            "txt_size": len(full_text.encode("utf-8")),
+            "pages": len(reader.pages),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"アップロード処理に失敗しました: {e}")
+
+
 @router.get("/api/{token}/admin/source/files")
 def admin_get_source_files(token: str):
     """保存されているソースファイル一覧を返す（PDF のみ。名前・サイズ・更新日時）。
