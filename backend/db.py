@@ -1064,6 +1064,22 @@ def get_history_by_user_id(user_id: int, limit: int = 50):
         return out
 
 
+def get_all_unit_progress_by_account(source: str = SOURCE_RAG) -> List[dict]:
+    """user_id が紐づく進捗行のみ返す（管理画面のアカウント別一覧用）。"""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT user_id, level, unit_id, perfect_count, streak_count,
+                   best_streak, last_taken_at, graduated_at
+            FROM unit_progress
+            WHERE source = ? AND user_id IS NOT NULL
+            ORDER BY user_id ASC
+            """,
+            (source,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
 def delete_attempt(attempt_id: int, user_id: int) -> Optional[dict]:
     """受験記録を1件削除し、該当単元の進捗を再計算する。
 

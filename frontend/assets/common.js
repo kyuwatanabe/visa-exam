@@ -125,7 +125,7 @@ const CHALLENGE_STATUS_LABEL = {
 };
 
 // アプリのバージョン（唯一の定義箇所）。管理画面・受験画面はここを参照する。
-const APP_VERSION = "v1.11.4";
+const APP_VERSION = "v1.11.5";
 
 // バージョン表示。#app-version-slot があればそこへ、#app-title があればその右、
 // どちらも無ければ画面上部右に出す。
