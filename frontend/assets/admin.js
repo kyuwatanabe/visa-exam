@@ -53,7 +53,7 @@
     }
     try {
       const data = await fetchJson(`/api/${ADMIN_TOKEN}/admin/users`);
-      renderUsers(data.users || [], data.total_cells || 0);
+      renderUsers(data.users || [], data.total_by_level || {});
       loadingEl.style.display = "none";
       contentEl.style.display = "block";
       // 起動時にチャレンジ件数を取得してバッジを更新（一覧描画も兼ねる）
@@ -64,19 +64,24 @@
     }
   }
 
-  // 一覧用のコンパクトな進捗バー。クリア済みセル数 / 全体で、ひと目で進み具合が分かる。
-  function progressBar(clearedCount, totalCells) {
-    const total = totalCells || 0;
-    const done = Math.min(clearedCount || 0, total || clearedCount || 0);
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-    return `
-      <div class="uprog">
-        <div class="uprog-bar"><div class="uprog-fill" style="width:${pct}%;"></div></div>
-        <span class="uprog-label">${done} / ${total} クリア</span>
-      </div>`;
+  // 級ごと（初級/中級/上級）に1本ずつの進捗バー。クリア済み/その級の単元数。
+  function levelBars(clearedByLevel, totalByLevel) {
+    const cbl = clearedByLevel || {};
+    return LEVELS.map((lv) => {
+      const total = totalByLevel[lv] || 0;
+      if (!total) return "";
+      const done = Math.min(cbl[lv] || 0, total);
+      const pct = Math.round((done / total) * 100);
+      return `
+        <div class="uprog-row">
+          <span class="uprog-lv">${levelLabel(lv)}</span>
+          <div class="uprog-bar"><div class="uprog-fill" style="width:${pct}%;"></div></div>
+          <span class="uprog-label">${done}/${total}</span>
+        </div>`;
+    }).join("");
   }
 
-  function renderUsers(users, totalCells) {
+  function renderUsers(users, totalByLevel) {
     if (users.length === 0) {
       usersArea.innerHTML = '<div class="empty">受験データはまだありません</div>';
       return;
@@ -85,17 +90,17 @@
       return `<tr>
         <td><button type="button" class="user-link" data-user-id="${u.user_id}" data-user="${escapeHtml(u.username)}">${escapeHtml(u.username)}</button></td>
         <td class="last-taken">${u.last_taken_at ? fmtDate(u.last_taken_at) : '<span class="muted">−</span>'}</td>
-        <td class="prog-cell">${progressBar(u.cleared_count, totalCells)}</td>
+        <td class="prog-cell"><div class="uprog">${levelBars(u.cleared_by_level, totalByLevel)}</div></td>
         <td><button type="button" class="btn btn-secondary pw-reset" data-user-id="${u.user_id}" data-user="${escapeHtml(u.username)}"
               style="padding: 4px 8px; font-size: 12px; white-space: nowrap;">PW再設定</button></td>
       </tr>`;
     }).join("");
     usersArea.innerHTML = `
       <table class="data">
-        <thead><tr><th>受験者</th><th>直近の受験</th><th>進捗（クリア単元）</th><th></th></tr></thead>
+        <thead><tr><th>受験者</th><th>直近の受験</th><th>進捗（級ごとのクリア単元）</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <p class="muted" style="font-size:12px; margin:10px 0 0;">進捗バーは、全 ${totalCells} 単元（級×単元）のうちクリア済みの割合です。受験者名をクリックすると詳しい記録が見られます。</p>
+      <p class="muted" style="font-size:12px; margin:10px 0 0;">各バーは、その級の全単元のうちクリア済みの割合です。受験者名をクリックすると詳しい記録が見られます。</p>
     `;
     usersArea.querySelectorAll(".user-link").forEach((btn) => {
       btn.addEventListener("click", () => loadHistory(btn.dataset.userId, btn.dataset.user));

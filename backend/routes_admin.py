@@ -74,24 +74,36 @@ def admin_users(token: str):
         units.sort(key=lambda u: u.get("last_taken_at") or "", reverse=True)
         cleared_count = sum(1 for u in units if u["cleared"])
         last_taken_at = max((u.get("last_taken_at") or "" for u in units), default="") or None
+        # 級別のクリア数（初級/中級/上級で分けて進捗バーに使う）
+        by_level = {}
+        for u in units:
+            if u["cleared"]:
+                by_level[u["level"]] = by_level.get(u["level"], 0) + 1
         users.append(
             {
                 "user_id": account["id"],
                 "username": account["display_name"],
                 "email": account["email"],
                 "cleared_count": cleared_count,
+                "cleared_by_level": by_level,
                 "last_taken_at": last_taken_at,
                 "units": units,
             }
         )
     # クリア数の降順、同数は表示名の昇順
     users.sort(key=lambda u: (-u["cleared_count"], u["username"]))
-    # 全体のクリア対象数（出題対象の 級×単元 セル数）。進捗バーの分母に使う。
-    total_cells = sum(
-        1 for c in rag_perspectives.available_cells()
-        if c["unit_id"] in VISA_TYPE_UNITS
-    )
-    return {"users": users, "required": UNIT_CLEAR_REQUIRED_STREAK, "total_cells": total_cells}
+    # 級ごとの単元総数（進捗バーの分母）。出題対象の単元だけを数える。
+    total_by_level: dict = {}
+    for c in rag_perspectives.available_cells():
+        if c["unit_id"] in VISA_TYPE_UNITS:
+            total_by_level[c["level"]] = total_by_level.get(c["level"], 0) + 1
+    total_cells = sum(total_by_level.values())
+    return {
+        "users": users,
+        "required": UNIT_CLEAR_REQUIRED_STREAK,
+        "total_cells": total_cells,
+        "total_by_level": total_by_level,
+    }
 
 
 @router.get("/api/{token}/admin/history")
