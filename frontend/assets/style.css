@@ -1515,35 +1515,52 @@ code {
 #level-section { opacity: .55; transition: opacity .2s; }
 #level-section.is-active { opacity: 1; }
 
-/* 単元別進捗マトリクス（単元×級） */
-.progress-matrix { width: 100%; table-layout: fixed; }
-.progress-matrix th, .progress-matrix td { text-align: center; vertical-align: middle; }
-.progress-matrix th:first-child, .progress-matrix .pcell-unit { text-align: left; }
-.progress-matrix td.pcell { border-radius: 6px; }
-.pcell-unit { font-weight: 600; white-space: nowrap; }
-.pcell {
-  padding: 10px 8px;
+/* 単元別進捗グリッド（単元×級）。CSS Grid でマス間に余白を作り、各マスは中央揃え。 */
+.pgrid {
+  display: grid;
+  gap: 8px;                 /* エリア同士の余白 */
+  align-items: stretch;
+}
+.pgrid-h {
   text-align: center;
-  vertical-align: middle;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 2px 0;
+}
+.pgrid-h.pgrid-unit { text-align: left; }
+.pgrid-unit {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  white-space: normal;
+  font-size: 14px;
+}
+.pcell {
+  display: flex;
+  align-items: center;
+  justify-content: center;  /* 数字をマスの中央に */
+  min-height: 46px;
+  border-radius: 8px;
+  text-align: center;
 }
 /* 未受験は級によらずグレー */
-.pcell--none { background: #f1f2f4; }
+.pcell--empty { background: #f1f2f4; color: #9aa0a8; }
 /* 挑戦中（淡色）: 級ごと */
 .pcell--beginner.pcell--prog     { background: #d7f5df; }  /* 初級=緑系 */
 .pcell--intermediate.pcell--prog { background: #fbf3cf; }  /* 中級=黄系 */
 .pcell--advanced.pcell--prog     { background: #fbdcdc; }  /* 上級=赤系 */
-/* クリア: 級の色 */
+/* クリア: 級の色（濃い） */
 .pcell--beginner.pcell--done     { background: #22c55e; }  /* 初級=緑 */
 .pcell--intermediate.pcell--done { background: #eab308; }  /* 中級=黄 */
 .pcell--advanced.pcell--done     { background: #ef4444; }  /* 上級=赤 */
 .pnums {
-  display: inline-block;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #1f2937;
-  text-align: center;
 }
+.pnums-sub { font-size: 12px; font-weight: 600; margin-left: 3px; opacity: .8; }
 .pcell--done .pnums { color: #fff; }
 /* 凡例の色ボックス */
 .lg-box {
@@ -1553,13 +1570,7 @@ code {
   vertical-align: middle;
   margin: 0 2px 0 6px;
 }
-.lg-box--none { background: #f1f2f4; border: 1px solid #d8d6d0; }
-.lg-box--beginner { background: #22c55e; }
-.lg-box--intermediate { background: #eab308; }
-.lg-box--advanced { background: #ef4444; }
-.lg-box--prog-beginner { background: #d7f5df; }
-.lg-box--prog-intermediate { background: #fbf3cf; }
-.lg-box--prog-advanced { background: #fbdcdc; }
+.lg-box--empty { background: #f1f2f4; border: 1px solid #d8d6d0; }
 
 /* 受験者一覧の進捗ボックス（級ごとに色分け・横並び） */
 .uprog { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }

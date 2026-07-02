@@ -157,51 +157,57 @@
     });
   }
 
-  // 単元別進捗：行＝単元、列＝初級/中級/上級 のマトリクス。
-  // どの単元のどの級まで進んでいるかが一目で分かるようにする。
+  // 単元別進捗：行＝単元、列＝初級/中級/上級 のグリッド。
+  // 数字は「受験数（満点数/必要満点数）」、色は級ごと（初級=緑/中級=黄/上級=赤）。
   function renderUnitProgress(unitsProgress) {
     if (!unitsProgress.length) {
       return '<h3 style="margin:4px 0 10px;">単元別進捗</h3><div class="empty">進捗はまだありません</div>';
     }
-    // level -> {unit_id -> cell} に組み替え、単元の一覧（順序）も作る
     const levels = unitsProgress.map((s) => s.level);
     const unitOrder = [];
-    const byUnit = {};   // unit_id -> {name, cells:{level->u}}
+    const byUnit = {};
     unitsProgress.forEach((sec) => {
       (sec.units || []).forEach((u) => {
         if (!byUnit[u.id]) { byUnit[u.id] = { name: u.name, cells: {} }; unitOrder.push(u.id); }
         byUnit[u.id].cells[sec.level] = u;
       });
     });
-    const head = `<tr><th>単元</th>${levels.map((l) => `<th>${levelLabel(l)}</th>`).join("")}</tr>`;
-    const rows = unitOrder.map((uid) => {
+    return `<h3 style="margin:4px 0 10px;">単元別進捗</h3>
+      ${progressGrid(levels, unitOrder, byUnit)}
+      ${progressLegend()}`;
+  }
+
+  // 単元×級の進捗グリッド（受験者側と共通の見た目）。
+  function progressGrid(levels, unitOrder, byUnit) {
+    const cols = `minmax(120px, 1.4fr) ${levels.map(() => "1fr").join(" ")}`;
+    let html = `<div class="pgrid" style="grid-template-columns:${cols};">`;
+    html += `<div class="pgrid-h pgrid-unit"></div>`;
+    levels.forEach((l) => { html += `<div class="pgrid-h">${levelLabel(l)}</div>`; });
+    unitOrder.forEach((uid) => {
       const row = byUnit[uid];
-      const tds = levels.map((l) => {
+      html += `<div class="pgrid-unit">${escapeHtml(row.name)}</div>`;
+      levels.forEach((l) => {
         const u = row.cells[l];
-        if (!u) return '<td class="pcell">−</td>';
-        const attempts = u.attempt_count || 0;      // 受験数（合否問わず）
-        const passed = u.perfect_count || 0;         // 正解数＝満点の回数
-        const need = u.required_streak || 0;         // 正解必要回数
-        // 状態: 未受験=グレー / 挑戦中=淡色 / クリア=級の色
-        let state = "none";
+        if (!u) { html += `<div class="pcell pcell--empty">−</div>`; return; }
+        const attempts = u.attempt_count || 0;   // 受験数
+        const passed = u.perfect_count || 0;      // 満点数
+        const need = u.required_streak || 0;      // 必要満点数
+        let state = "empty";
         if (u.cleared) state = "done";
         else if (attempts > 0) state = "prog";
-        const nums = `<span class="pnums">${passed}/${need}/${attempts}</span>`;
-        return `<td class="pcell pcell--${l} pcell--${state}">${nums}</td>`;
-      }).join("");
-      return `<tr><td class="pcell-unit">${escapeHtml(row.name)}</td>${tds}</tr>`;
-    }).join("");
-    return `<h3 style="margin:4px 0 10px;">単元別進捗</h3>
-      <table class="data progress-matrix">
-        <thead>${head}</thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p class="muted" style="font-size:12px; margin:8px 0 0; line-height:1.8;">
-        数字は「正解数／正解必要回数／受験数」です。<br>
-        色：<span class="lg-box lg-box--none"></span>未受験　
-        <span class="lg-box lg-box--prog-beginner"></span><span class="lg-box lg-box--prog-intermediate"></span><span class="lg-box lg-box--prog-advanced"></span>挑戦中（淡色）　
-        <span class="lg-box lg-box--beginner"></span>初級 / <span class="lg-box lg-box--intermediate"></span>中級 / <span class="lg-box lg-box--advanced"></span>上級 クリア
-      </p>`;
+        const nums = `${attempts}<span class="pnums-sub">(${passed}/${need})</span>`;
+        html += `<div class="pcell pcell--${l} pcell--${state}"><span class="pnums">${nums}</span></div>`;
+      });
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  function progressLegend() {
+    return `<p class="muted" style="font-size:12px; margin:10px 0 0; line-height:1.9;">
+      数字は「受験数（満点数/必要満点数）」です。<br>
+      <span class="lg-box lg-box--empty"></span>未受験　薄い色＝挑戦中　濃い色＝クリア（級ごとに 初級=緑／中級=黄／上級=赤）
+    </p>`;
   }
 
   function renderHistory(attempts, requiredCount, userId) {

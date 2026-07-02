@@ -146,34 +146,33 @@
           area.innerHTML = '<div class="empty">進捗はまだありません</div>';
           return;
         }
-        const head = `<tr><th>単元</th>${levels.map((l) => `<th>${levelLabel(l)}</th>`).join("")}</tr>`;
-        const rows = unitOrder.map((uid) => {
+        const cols = `minmax(120px, 1.4fr) ${levels.map(() => "1fr").join(" ")}`;
+        let html = `<div class="pgrid" style="grid-template-columns:${cols};">`;
+        html += `<div class="pgrid-h pgrid-unit"></div>`;
+        levels.forEach((l) => { html += `<div class="pgrid-h">${levelLabel(l)}</div>`; });
+        unitOrder.forEach((uid) => {
           const row = byUnit[uid];
           const pending = levels.some((l) => openUnitKeys.has(`${l}:${uid}`));
           const mark = pending ? ' <span class="pending-tag">確認中</span>' : "";
-          const tds = levels.map((l) => {
+          html += `<div class="pgrid-unit">${escapeHtml(row.name)}${mark}</div>`;
+          levels.forEach((l) => {
             const u = row.cells[l];
-            if (!u) return '<td class="pcell">−</td>';
+            if (!u) { html += `<div class="pcell pcell--empty">−</div>`; return; }
             const attempts = u.attempt_count || 0;
             const passed = u.perfect_count || 0;
             const need = u.required_streak || 0;
-            let state = "none";
+            let state = "empty";
             if (u.cleared) state = "done";
             else if (attempts > 0) state = "prog";
-            const nums = `<span class="pnums">${passed}/${need}/${attempts}</span>`;
-            return `<td class="pcell pcell--${l} pcell--${state}">${nums}</td>`;
-          }).join("");
-          return `<tr><td class="pcell-unit">${escapeHtml(row.name)}${mark}</td>${tds}</tr>`;
-        }).join("");
-        area.innerHTML = `
-          <table class="data progress-matrix">
-            <thead>${head}</thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <p class="muted" style="font-size:12px; margin:8px 0 0; line-height:1.8;">
-            数字は「正解数／正解必要回数／受験数」です。<br>
-            色：<span class="lg-box lg-box--none"></span>未受験　
-            <span class="lg-box lg-box--beginner"></span>初級 / <span class="lg-box lg-box--intermediate"></span>中級 / <span class="lg-box lg-box--advanced"></span>上級 クリア（挑戦中は淡色）
+            const nums = `${attempts}<span class="pnums-sub">(${passed}/${need})</span>`;
+            html += `<div class="pcell pcell--${l} pcell--${state}"><span class="pnums">${nums}</span></div>`;
+          });
+        });
+        html += `</div>`;
+        area.innerHTML = html + `
+          <p class="muted" style="font-size:12px; margin:10px 0 0; line-height:1.9;">
+            数字は「受験数（満点数/必要満点数）」です。<br>
+            <span class="lg-box lg-box--empty"></span>未受験　薄い色＝挑戦中　濃い色＝クリア（級ごとに 初級=緑／中級=黄／上級=赤）
           </p>`;
       } catch (e) {
         area.innerHTML = '<div class="empty">進捗の取得に失敗しました</div>';
