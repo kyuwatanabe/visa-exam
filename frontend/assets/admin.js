@@ -591,7 +591,7 @@
 
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "削除";
-        deleteBtn.style.cssText = "padding:4px 12px; background:#f44336; color:white; border:none; border-radius:3px; cursor:pointer; font-size:12px; flex-shrink:0;";
+        deleteBtn.style.cssText = "padding:4px 12px; background:#f44336; color:white; border:none; border-radius:3px; cursor:pointer; font-size:12px;";
         deleteBtn.addEventListener("click", async () => {
           const warn = file.active ? "\n※ 出題に使用中の原本です。削除すると問題生成に使えなくなります。" : "";
           if (!confirm(`${file.name} を削除しますか？${warn}`)) return;
@@ -610,8 +610,28 @@
           }
         });
 
+        // ダウンロードボタン（PDF の原本は PDF とテキスト、テキストのみの原本はテキスト）
+        const btnBox = document.createElement("div");
+        btnBox.style.cssText = "display:flex; gap:6px; flex-shrink:0; align-items:center;";
+        const target = file.internal_name || file.name;
+        const addDownload = (label, kindParam) => {
+          const a = document.createElement("a");
+          a.textContent = label;
+          a.href = `/api/${ADMIN_TOKEN}/admin/source/download?filename=${encodeURIComponent(target)}&kind=${kindParam}`;
+          a.setAttribute("download", "");
+          a.style.cssText = "padding:4px 12px; background:#2196F3; color:white; border-radius:3px; font-size:12px; text-decoration:none; white-space:nowrap;";
+          btnBox.appendChild(a);
+        };
+        if (kind === "テキスト") {
+          addDownload("ダウンロード", "txt");
+        } else {
+          addDownload("PDF ダウンロード", "pdf");
+          if (file.has_text) addDownload("テキスト", "txt");
+        }
+        btnBox.appendChild(deleteBtn);
+
         div.appendChild(infoDiv);
-        div.appendChild(deleteBtn);
+        div.appendChild(btnBox);
         filesList.appendChild(div);
       });
     } catch (e) {

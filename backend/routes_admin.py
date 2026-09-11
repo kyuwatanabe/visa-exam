@@ -547,6 +547,39 @@ async def delete_source_file(token: str, filename: str = Query(...)):
         raise HTTPException(400, f"削除に失敗しました: {e}")
 
 
+@router.get("/api/{token}/admin/source/download")
+def download_source_file(token: str, filename: str = Query(...), kind: str = Query("pdf")):
+    """原本をダウンロードする。
+
+    filename は内部名（stem）。kind は "pdf"（原本PDF）か "txt"（テキスト）。
+    保存時のファイル名は manifest の表示名を使う（例: 米国ビザ申請の手引き Ver.22.1（原本）.txt）。
+    """
+    _check_token(token)
+    from fastapi.responses import FileResponse
+
+    if not filename or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "不正なファイル名です")
+    stem = filename
+    if stem.lower().endswith((".pdf", ".txt")):
+        stem = stem[:-4]
+    if not stem or stem.startswith("_") or stem.startswith("."):
+        raise HTTPException(400, "不正なファイル名です")
+    kind = (kind or "pdf").lower()
+    if kind not in ("pdf", "txt"):
+        raise HTTPException(400, "種別は pdf か txt を指定してください")
+
+    path = SOURCE_DIR / f"{stem}.{kind}"
+    if not path.is_file():
+        raise HTTPException(404, "ファイルが見つかりません")
+
+    # 保存名: 表示名から拡張子を除き、種別の拡張子を付ける
+    display = _load_manifest().get(stem, path.name)
+    base = display[:-4] if display.lower().endswith((".pdf", ".txt")) else display
+    base = base.replace("/", "_").replace("\\", "_").strip() or stem
+    media = "application/pdf" if kind == "pdf" else "text/plain; charset=utf-8"
+    return FileResponse(path, media_type=media, filename=f"{base}.{kind}")
+
+
 # --- プロンプト修正（質問・回答の追加指示） -----------------------------------
 
 @router.get("/api/{token}/admin/prompts")
