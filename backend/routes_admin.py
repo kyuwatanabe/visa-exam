@@ -359,49 +359,49 @@ def admin_close_challenge(token: str, challenge_id: int, req: AdminChallengeClos
 async def admin_upload_source(token: str, file: UploadFile = File(...)):
     """PDF をアップロードして、自動的にテキストに変換する。
 
-    アップロード時の元ファイル名を保持して保存する（PDF と、同名の .txt）。
-    RAG 読み込みは source ディレクトリ内の最新 .txt を使う。
+    内部の保存名は英数字（URL 安全）にし、元のファイル名は manifest に記録して
+    一覧表示に使う。RAG 読み込みは source ディレクトリ内の最新 .txt を使う。
     """
     _check_token(token)
-    from backend.config import SOURCE_DIR
     from pypdf import PdfReader
     import io
     import os
+    import time
 
-    if not file.filename.endswith('.pdf'):
+    if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(400, "PDF ファイルのみアップロード可能です。")
 
-    # ファイル名のサニタイズ（パス区切りを除去し、ベース名のみにする）
-    base = os.path.basename(file.filename)
-    base = base.replace("/", "_").replace("\\", "_").strip()
-    stem = base[:-4] if base.lower().endswith(".pdf") else base  # 拡張子除去
-    if not stem:
-        stem = "source"
+    # 元のファイル名（表示用）。パス区切りだけ除去する。
+    display_name = os.path.basename(file.filename).replace("/", "_").replace("\\", "_").strip()
+    if not display_name:
+        display_name = "source.pdf"
+
+    # 内部の保存名（英数字のみ）。日本語名でも URL 安全にするため時刻ベースにする。
+    stem = f"source_{int(time.time())}"
 
     try:
         content = await file.read()
-        pdf_bytes = io.BytesIO(content)
-        reader = PdfReader(pdf_bytes)
+        reader = PdfReader(io.BytesIO(content))
 
         SOURCE_DIR.mkdir(parents=True, exist_ok=True)
         pdf_path = SOURCE_DIR / f"{stem}.pdf"
         txt_path = SOURCE_DIR / f"{stem}.txt"
         pdf_path.write_bytes(content)
 
-        text_parts = []
-        for page in reader.pages:
-            page_text = page.extract_text() or ""
-            text_parts.append(page_text)
-
+        # ページごとにフォームフィード区切りで結合したテキストを同名 .txt で保存
+        text_parts = [(page.extract_text() or "") for page in reader.pages]
         full_text = "\f".join(text_parts)
         txt_path.write_text(full_text, encoding="utf-8")
+
+        # 内部名 → 元のファイル名 の対応を manifest に記録
+        _set_source_display_name(stem, display_name)
 
         from backend import rag_source
         rag_source.reset_cache()
 
         return {
             "ok": True,
-            "filename": base,
+            "filename": display_name,
             "pdf_size": len(content),
             "txt_size": len(full_text.encode("utf-8")),
             "pages": len(reader.pages),
@@ -412,31 +412,139 @@ async def admin_upload_source(token: str, file: UploadFile = File(...)):
         raise HTTPException(500, f"アップロード処理に失敗しました: {e}")
 
 
+# --- 原本の表示名 manifest（内部ファイル名 stem → 表示名）--------------------
+# backend/source/_manifest.json に {"visa_guide_v22_1": "米国ビザ申請の手引き Ver.22.1（原本）"}
+# のように記録する。組み込みの原本（リポジトリにコミット済みの txt）もここで表示名を持つ。
+def _manifest_path():
+    return SOURCE_DIR / "_manifest.json"
+
+
+def _load_manifest() -> dict:
+    p = _manifest_path()
+    if p.exists():
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except Exception:  # noqa: BLE001
+            return {}
+    return {}
+
+
+def _save_manifest(m: dict) -> None:
+    SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+    _manifest_path().write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _set_source_display_name(stem: str, display_name: str) -> None:
+    m = _load_manifest()
+    m[stem] = display_name
+    _save_manifest(m)
+
+
+def _size_display(n: int) -> str:
+    return f"{n / 1024:.1f} KB" if n < 1024 * 1024 else f"{n / (1024 * 1024):.1f} MB"
+
+
 @router.get("/api/{token}/admin/source/files")
 def admin_get_source_files(token: str):
-    """保存されているソースファイル一覧を返す（PDF のみ。名前・サイズ・更新日時）。
+    """保存されている原本の一覧を返す。
 
-    .txt（内部変換物）や .gitkeep などの管理用ファイルは一覧に出さない。
+    内部名（拡張子なし stem）ごとに PDF と txt をまとめて 1 件として返す。
+      - PDF がある … 種別「PDF」（アップロードされた原本。txt は内部変換物）
+      - txt のみ  … 種別「テキスト」（組み込みの原本など、PDF 無しで txt を直接置いたもの）
+    表示名は manifest の値を優先し、無ければファイル名を使う。
+    .gitkeep・_manifest.json などの管理用ファイルは一覧に出さない。
     """
     _check_token(token)
-    from backend.config import SOURCE_DIR
     from datetime import datetime
-    
+
+    manifest = _load_manifest()
+    groups: dict = {}  # stem -> {"pdf": Path|None, "txt": Path|None}
+    if SOURCE_DIR.exists():
+        for path in SOURCE_DIR.iterdir():
+            if not path.is_file():
+                continue
+            ext = path.suffix.lower()
+            if ext not in (".pdf", ".txt"):
+                continue
+            g = groups.setdefault(path.stem, {"pdf": None, "txt": None})
+            g[ext[1:]] = path
+
+    # RAG が実際に使う原本（最新更新の txt）
+    from backend import rag_source
+    active = rag_source._find_source_txt()
+    active_stem = active.stem if active is not None else None
+
     files = []
-    source_dir = SOURCE_DIR
-    
-    if source_dir.exists():
-        for path in sorted(source_dir.glob("*.pdf")):
-            if path.is_file():
-                stat = path.stat()
-                files.append({
-                    "name": path.name,
-                    "size": stat.st_size,
-                    "size_display": f"{stat.st_size / 1024:.1f} KB" if stat.st_size < 1024*1024 else f"{stat.st_size / (1024*1024):.1f} MB",
-                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                })
-    
+    for stem, g in groups.items():
+        main = g["pdf"] or g["txt"]
+        stat = main.stat()
+        if g["pdf"] is not None:
+            kind = "PDF"
+            fallback = g["pdf"].name
+        else:
+            kind = "テキスト"
+            fallback = g["txt"].name
+        files.append({
+            "name": manifest.get(stem, fallback),
+            "internal_name": stem,
+            "kind": kind,
+            "has_text": g["txt"] is not None,
+            "active": stem == active_stem,
+            "size": stat.st_size,
+            "size_display": _size_display(stat.st_size),
+            "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        })
+    # 使用中を先頭、あとは更新日時の新しい順
+    files.sort(key=lambda f: f["modified"], reverse=True)
+    files.sort(key=lambda f: not f["active"])  # 安定ソートなので更新順は保たれる
     return {"files": files}
+
+
+@router.delete("/api/{token}/admin/source/delete")
+async def delete_source_file(token: str, filename: str = Query(...)):
+    """原本を削除する。
+
+    filename は内部名（stem）。拡張子付き（.pdf / .txt）で来ても stem に揃える。
+    同じ stem の PDF・txt・manifest エントリをまとめて削除する。
+    """
+    _check_token(token)
+
+    # セキュリティ: パストトラバーサル防止
+    if not filename or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "不正なファイル名です")
+
+    stem = filename
+    if stem.lower().endswith((".pdf", ".txt")):
+        stem = stem[:-4]
+    if not stem or stem.startswith("_") or stem.startswith("."):
+        raise HTTPException(400, "不正なファイル名です")
+
+    try:
+        deleted = []
+        for ext in (".pdf", ".txt"):
+            p = SOURCE_DIR / f"{stem}{ext}"
+            if p.exists():
+                p.unlink()
+                deleted.append(p.name)
+
+        m = _load_manifest()
+        if stem in m:
+            del m[stem]
+            _save_manifest(m)
+
+        if not deleted:
+            raise HTTPException(404, "ファイルが見つかりません")
+
+        # キャッシュをリセット（RAGソース再読み込みを強制）
+        from backend import rag_source
+        rag_source.reset_cache()
+
+        return {"ok": True, "deleted": deleted}
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"削除に失敗しました: {e}")
 
 
 # --- プロンプト修正（質問・回答の追加指示） -----------------------------------
@@ -474,90 +582,3 @@ async def admin_set_prompts(token: str, request: Request):
     except Exception:
         pass
     return {"ok": True, "question": question, "answer": answer, "pool_cleared": cleared}
-async def admin_upload_source(token: str, file: UploadFile = File(...)):
-    """PDF をアップロードして、自動的にテキストに変換する。
-
-    アップロード時の元ファイル名を保持して保存する（PDF と、同名の .txt）。
-    RAG 読み込みは source ディレクトリ内の最新 .txt を使う。
-    """
-    _check_token(token)
-    from backend.config import SOURCE_DIR
-    from pypdf import PdfReader
-    import io
-    import os
-    
-    if not file.filename.endswith('.pdf'):
-        raise HTTPException(400, "PDF ファイルのみアップロード可能です。")
-    
-    # ファイル名のサニタイズ（パス区切りを除去し、ベース名のみにする）
-    base = os.path.basename(file.filename)
-    base = base.replace("/", "_").replace("\\", "_").strip()
-    stem = base[:-4] if base.lower().endswith(".pdf") else base  # 拡張子除去
-    if not stem:
-        stem = "source"
-    
-    try:
-        # PDF ファイルを読み込み
-        content = await file.read()
-        pdf_bytes = io.BytesIO(content)
-        reader = PdfReader(pdf_bytes)
-        
-        # 元のファイル名で PDF を保存
-        SOURCE_DIR.mkdir(parents=True, exist_ok=True)
-        pdf_path = SOURCE_DIR / f"{stem}.pdf"
-        txt_path = SOURCE_DIR / f"{stem}.txt"
-        pdf_path.write_bytes(content)
-        
-        # テキストに変換して、同名の .txt で保存
-        text_parts = []
-        for page in reader.pages:
-            page_text = page.extract_text() or ""
-            text_parts.append(page_text)
-        
-        # ページごとにフォームフィード区切りで結合
-        full_text = "\f".join(text_parts)
-        txt_path.write_text(full_text, encoding="utf-8")
-        
-        # キャッシュをリセット（RAGソース再読み込みを強制）
-        from backend import rag_source
-        rag_source.reset_cache()
-        
-        return {
-            "ok": True,
-            "filename": base,
-            "pdf_size": len(content),
-            "txt_size": len(full_text.encode("utf-8")),
-            "pages": len(reader.pages),
-        }
-    except Exception as e:
-        raise HTTPException(400, f"ファイル処理に失敗しました: {str(e)}")
-
-
-@router.delete("/api/{token}/admin/source/delete")
-async def delete_source_file(token: str, filename: str = Query(...)):
-    """ソースファイルを削除。"""
-    _check_token(token)
-    
-    # セキュリティ: パストトラバーサル防止
-    if ".." in filename or "/" in filename or "\\" in filename:
-        raise HTTPException(400, "不正なファイル名です")
-    
-    try:
-        file_path = SOURCE_DIR / filename
-        
-        if file_path.exists():
-            file_path.unlink()
-        
-        # PDF を消したら、対応する同名 .txt（内部変換物）も併せて消す
-        if filename.lower().endswith(".pdf"):
-            txt_sibling = SOURCE_DIR / (filename[:-4] + ".txt")
-            if txt_sibling.exists():
-                txt_sibling.unlink()
-        
-        # キャッシュをリセット（RAGソース再読み込みを強制）
-        from backend import rag_source
-        rag_source.reset_cache()
-        
-        return {"ok": True, "deleted": filename}
-    except Exception as e:
-        raise HTTPException(400, f"削除に失敗しました: {str(e)}")

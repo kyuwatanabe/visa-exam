@@ -550,52 +550,72 @@
   const uploadStatus = document.getElementById("upload-status");
   const filesList = document.getElementById("files-list");
 
+  function escSrc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  function srcBadge(text, bg, color) {
+    return `<span style="display:inline-block; padding:1px 8px; margin-left:6px; border-radius:10px; font-size:11px; font-weight:normal; background:${bg}; color:${color}; vertical-align:middle;">${escSrc(text)}</span>`;
+  }
+
   async function loadSourceFiles() {
     try {
       const data = await fetchJson(`/api/${ADMIN_TOKEN}/admin/source/files`);
       filesList.innerHTML = "";
-      if (data.files.length === 0) {
-        filesList.innerHTML = "<p style=\"font-size:13px; color:#999; margin:0;\">ファイルがアップロードされていません。</p>";
+      if (!data.files || data.files.length === 0) {
+        filesList.innerHTML = "<p style=\"font-size:13px; color:#999; margin:0;\">原本がありません。PDF をアップロードしてください。</p>";
         return;
       }
       data.files.forEach(file => {
         const div = document.createElement("div");
-        div.style.cssText = "padding:8px; background:#f9f9f9; border-radius:4px; border-left:3px solid #2196F3; display:flex; justify-content:space-between; align-items:center;";
+        div.style.cssText = "padding:8px; background:#f9f9f9; border-radius:4px; border-left:3px solid #2196F3; display:flex; justify-content:space-between; align-items:center; gap:12px;";
         const date = new Date(file.modified);
         const dateStr = date.toLocaleString("ja-JP");
-        
+
+        // 種別ラベル（PDF / テキスト）と、RAG で使用中かどうか
+        const kind = file.kind || "PDF";
+        const kindBadge = kind === "テキスト"
+          ? srcBadge("テキスト", "#fff3e0", "#e65100")
+          : srcBadge("PDF", "#e3f2fd", "#1565c0");
+        const activeBadge = file.active ? srcBadge("出題に使用中", "#e8f5e9", "#2e7d32") : "";
+
         const infoDiv = document.createElement("div");
         infoDiv.innerHTML = `
-          <strong>${file.name}</strong><br>
+          <strong>${escSrc(file.name)}</strong>${kindBadge}${activeBadge}<br>
           <span style="font-size:12px; color:#666;">
-            サイズ: ${file.size_display} | 更新: ${dateStr}
+            サイズ: ${escSrc(file.size_display)} | 更新: ${escSrc(dateStr)}
           </span>
         `;
-        
+
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "削除";
-        deleteBtn.style.cssText = "padding:4px 12px; background:#f44336; color:white; border:none; border-radius:3px; cursor:pointer; font-size:12px;";
+        deleteBtn.style.cssText = "padding:4px 12px; background:#f44336; color:white; border:none; border-radius:3px; cursor:pointer; font-size:12px; flex-shrink:0;";
         deleteBtn.addEventListener("click", async () => {
-          if (!confirm(`${file.name} を削除しますか？`)) return;
+          const warn = file.active ? "\n※ 出題に使用中の原本です。削除すると問題生成に使えなくなります。" : "";
+          if (!confirm(`${file.name} を削除しますか？${warn}`)) return;
           try {
-            const res = await fetch(`/api/${ADMIN_TOKEN}/admin/source/delete?filename=${encodeURIComponent(file.name)}`, {
+            const target = file.internal_name || file.name;  // 削除は内部名で（PDF・txt をまとめて削除）
+            const res = await fetch(`/api/${ADMIN_TOKEN}/admin/source/delete?filename=${encodeURIComponent(target)}`, {
               method: "DELETE",
             });
             if (!res.ok) {
-              throw new Error("削除に失敗しました");
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.detail || "削除に失敗しました");
             }
             await loadSourceFiles();
           } catch (e) {
             alert(`削除エラー: ${e.message}`);
           }
         });
-        
+
         div.appendChild(infoDiv);
         div.appendChild(deleteBtn);
         filesList.appendChild(div);
       });
     } catch (e) {
-      filesList.innerHTML = `<p style="color:red; font-size:13px;">読み込みエラー: ${e.message}</p>`;
+      filesList.innerHTML = `<p style="color:red; font-size:13px;">読み込みエラー: ${escSrc(e.message)}</p>`;
     }
   }
 
