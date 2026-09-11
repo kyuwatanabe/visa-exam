@@ -610,24 +610,17 @@
           }
         });
 
-        // ダウンロードボタン（PDF の原本は PDF とテキスト、テキストのみの原本はテキスト）
+        // ダウンロードボタン（PDF の原本は PDF、テキストの原本はテキストでダウンロード）
         const btnBox = document.createElement("div");
         btnBox.style.cssText = "display:flex; gap:6px; flex-shrink:0; align-items:center;";
         const target = file.internal_name || file.name;
-        const addDownload = (label, kindParam) => {
-          const a = document.createElement("a");
-          a.textContent = label;
-          a.href = `/api/${ADMIN_TOKEN}/admin/source/download?filename=${encodeURIComponent(target)}&kind=${kindParam}`;
-          a.setAttribute("download", "");
-          a.style.cssText = "padding:4px 12px; background:#2196F3; color:white; border-radius:3px; font-size:12px; text-decoration:none; white-space:nowrap;";
-          btnBox.appendChild(a);
-        };
-        if (kind === "テキスト") {
-          addDownload("ダウンロード", "txt");
-        } else {
-          addDownload("PDF ダウンロード", "pdf");
-          if (file.has_text) addDownload("テキスト", "txt");
-        }
+        const dlKind = kind === "テキスト" ? "txt" : "pdf";
+        const dlLink = document.createElement("a");
+        dlLink.textContent = "ダウンロード";
+        dlLink.href = `/api/${ADMIN_TOKEN}/admin/source/download?filename=${encodeURIComponent(target)}&kind=${dlKind}`;
+        dlLink.setAttribute("download", "");
+        dlLink.style.cssText = "padding:4px 12px; background:#2196F3; color:white; border-radius:3px; font-size:12px; text-decoration:none; white-space:nowrap;";
+        btnBox.appendChild(dlLink);
         btnBox.appendChild(deleteBtn);
 
         div.appendChild(infoDiv);
