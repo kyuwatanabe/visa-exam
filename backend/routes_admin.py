@@ -576,8 +576,23 @@ def download_source_file(token: str, filename: str = Query(...), kind: str = Que
     display = _load_manifest().get(stem, path.name)
     base = display[:-4] if display.lower().endswith((".pdf", ".txt")) else display
     base = base.replace("/", "_").replace("\\", "_").strip() or stem
-    media = "application/pdf" if kind == "pdf" else "text/plain; charset=utf-8"
-    return FileResponse(path, media_type=media, filename=f"{base}.{kind}")
+    if kind == "txt":
+        # Windows のメモ帳・Excel が UTF-8 と判別できるよう BOM を付けて返す
+        # （サーバー上のファイル自体は変更しない）
+        from fastapi import Response
+        from urllib.parse import quote
+
+        data = path.read_bytes()
+        if not data.startswith(b"\xef\xbb\xbf"):
+            data = b"\xef\xbb\xbf" + data
+        disposition = "attachment; filename*=utf-8''" + quote(f"{base}.txt")
+        return Response(
+            content=data,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": disposition},
+        )
+
+    return FileResponse(path, media_type="application/pdf", filename=f"{base}.pdf")
 
 
 # --- プロンプト修正（質問・回答の追加指示） -----------------------------------
